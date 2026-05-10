@@ -7,16 +7,8 @@ from datetime import datetime
 from typing import Optional
 from sqlmodel import Field, SQLModel
 
-
-class User(SQLModel, table=True):
-    __tablename__ = "users"
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    email: str = Field(unique=True, index=True)
-    hashed_password: str
-    role: str = Field(default="employee")  # employee | doctor | pharmacy_staff | admin
-    is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+# User and UserRole live in their own module — import to expose them from the package
+from src.models.user import User, UserRole  # noqa: F401
 
 
 class Patient(SQLModel, table=True):
