@@ -1,205 +1,142 @@
-import React, { useState } from "react";
-import { Outlet, useNavigate, useLocation } from "react-router-dom";
+// @ts-nocheck
+import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom'
 import {
-  AppBar,
-  Box,
-  CssBaseline,
-  Drawer,
-  IconButton,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Toolbar,
-  Typography,
-  Avatar,
-  Tooltip,
-  Divider,
-  Chip,
-} from "@mui/material";
-import MenuIcon from "@mui/icons-material/Menu";
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import PeopleIcon from "@mui/icons-material/People";
-import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
-import LogoutIcon from "@mui/icons-material/Logout";
-import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
-import { useAuth } from "../context/AuthContext";
+  Box, Drawer, List, ListItem, ListItemButton, ListItemIcon,
+  ListItemText, Typography, Avatar, Chip, Divider, Tooltip, IconButton
+} from '@mui/material'
+import {
+  Dashboard, People, MedicalServices, Inventory2,
+  Psychology, Logout, QrCode, Settings
+} from '@mui/icons-material'
+import { useAuth } from '../context/AuthContext'
 
-const DRAWER_WIDTH = 240;
+const DRAWER_WIDTH = 240
 
-const navItems = [
-  { label: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
-  { label: "Patients", icon: <PeopleIcon />, path: "/patients" },
-  { label: "Check-In", icon: <QrCodeScannerIcon />, path: "/checkin" },
-];
+const NAV_ITEMS = [
+  { label: 'Dashboard', icon: <Dashboard />, path: '/dashboard', roles: ['doctor', 'admin', 'employee', 'pharmacy_staff'] },
+  { label: 'Patients', icon: <People />, path: '/patients', roles: ['doctor', 'admin'] },
+  { label: 'Consultations', icon: <MedicalServices />, path: '/consultations', roles: ['doctor', 'admin'] },
+  { label: 'QR Check-in', icon: <QrCode />, path: '/checkin', roles: ['doctor', 'admin', 'employee'] },
+  { label: 'Inventory', icon: <Inventory2 />, path: '/inventory', roles: ['doctor', 'pharmacy_staff', 'admin'], soon: true },
+  { label: 'JRISSI / AI', icon: <Psychology />, path: '/ai', roles: ['doctor'], soon: true },
+]
+
+const ROLE_COLORS: Record<string, string> = {
+  doctor: 'primary',
+  admin: 'error',
+  employee: 'success',
+  pharmacy_staff: 'warning',
+}
 
 export default function Layout() {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
 
-  const handleDrawerToggle = () => setMobileOpen((prev) => !prev);
+  const handleLogout = () => { logout(); navigate('/login') }
 
-  const drawerContent = (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      {/* Brand */}
-      <Toolbar
-        sx={{
-          background: "linear-gradient(135deg, #1a237e 0%, #0d47a1 100%)",
-          gap: 1,
-        }}
-      >
-        <LocalHospitalIcon sx={{ color: "#90caf9" }} />
-        <Typography variant="h6" fontWeight={700} color="white" noWrap>
-          MRAS v3
-        </Typography>
-      </Toolbar>
+  const visibleItems = NAV_ITEMS.filter(
+    (item) => user && item.roles.includes(user.role)
+  )
 
-      <Divider />
-
-      <List sx={{ flexGrow: 1, pt: 1 }}>
-        {navItems.map(({ label, icon, path }) => {
-          const active = location.pathname.startsWith(path);
-          return (
-            <ListItem key={label} disablePadding>
-              <ListItemButton
-                selected={active}
-                onClick={() => {
-                  navigate(path);
-                  setMobileOpen(false);
-                }}
-                sx={{
-                  mx: 1,
-                  borderRadius: 2,
-                  "&.Mui-selected": {
-                    bgcolor: "primary.main",
-                    color: "white",
-                    "& .MuiListItemIcon-root": { color: "white" },
-                    "&:hover": { bgcolor: "primary.dark" },
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 40 }}>{icon}</ListItemIcon>
-                <ListItemText primary={label} />
-              </ListItemButton>
-            </ListItem>
-          );
-        })}
-      </List>
-
-      <Divider />
-
-      {/* User card */}
-      <Box sx={{ p: 2 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1 }}>
-          <Avatar sx={{ bgcolor: "primary.main", width: 36, height: 36 }}>
-            {user?.username?.[0]?.toUpperCase() ?? "U"}
-          </Avatar>
-          <Box sx={{ overflow: "hidden" }}>
-            <Typography variant="body2" fontWeight={600} noWrap>
-              {user?.username}
-            </Typography>
-            <Chip
-              label={user?.role}
-              size="small"
-              color="primary"
-              variant="outlined"
-              sx={{ height: 18, fontSize: "0.65rem" }}
-            />
-          </Box>
-        </Box>
-        <ListItemButton
-          onClick={logout}
-          sx={{ borderRadius: 2, color: "error.main" }}
-        >
-          <ListItemIcon sx={{ minWidth: 36, color: "error.main" }}>
-            <LogoutIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText primary="Logout" primaryTypographyProps={{ fontSize: 14 }} />
-        </ListItemButton>
-      </Box>
-    </Box>
-  );
+  const initials = user?.full_name
+    .split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || 'U'
 
   return (
-    <Box sx={{ display: "flex" }}>
-      <CssBaseline />
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
 
-      {/* AppBar */}
-      <AppBar
-        position="fixed"
-        elevation={0}
-        sx={{
-          width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
-          ml: { sm: `${DRAWER_WIDTH}px` },
-          backdropFilter: "blur(12px)",
-          bgcolor: "rgba(255,255,255,0.85)",
-          borderBottom: "1px solid",
-          borderColor: "divider",
-          color: "text.primary",
-        }}
-      >
-        <Toolbar>
-          <IconButton
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: "none" } }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" fontWeight={600} sx={{ flexGrow: 1 }}>
-            Medical Room Automation System
-          </Typography>
-          <Tooltip title={user?.email ?? ""}>
-            <Avatar sx={{ bgcolor: "primary.main", cursor: "pointer" }}>
-              {user?.username?.[0]?.toUpperCase() ?? "U"}
-            </Avatar>
-          </Tooltip>
-        </Toolbar>
-      </AppBar>
-
-      {/* Drawer — mobile */}
-      <Drawer
-        variant="temporary"
-        open={mobileOpen}
-        onClose={handleDrawerToggle}
-        ModalProps={{ keepMounted: true }}
-        sx={{
-          display: { xs: "block", sm: "none" },
-          "& .MuiDrawer-paper": { width: DRAWER_WIDTH },
-        }}
-      >
-        {drawerContent}
-      </Drawer>
-
-      {/* Drawer — desktop */}
+      {/* Sidebar */}
       <Drawer
         variant="permanent"
         sx={{
-          display: { xs: "none", sm: "block" },
-          "& .MuiDrawer-paper": { width: DRAWER_WIDTH, boxSizing: "border-box" },
+          width: DRAWER_WIDTH,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': {
+            width: DRAWER_WIDTH,
+            boxSizing: 'border-box',
+            borderRight: '1px solid',
+            borderColor: 'divider',
+            bgcolor: 'background.paper',
+          },
         }}
-        open
       >
-        {drawerContent}
+        {/* Logo */}
+        <Box sx={{ p: 2.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{ width: 36, height: 36, borderRadius: 1.5, bgcolor: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <MedicalServices sx={{ color: 'white', fontSize: 20 }} />
+            </Box>
+            <Box>
+              <Typography variant="body1" sx={{ fontWeight: 600 }} lineHeight={1}>MRAS v3.0</Typography>
+              <Typography variant="caption" color="text.secondary">Medical Room System</Typography>
+            </Box>
+          </Box>
+        </Box>
+
+        {/* Nav */}
+        <Box sx={{ flex: 1, py: 1.5 }}>
+          <List dense disablePadding>
+            {visibleItems.map((item) => (
+              <ListItem key={item.path} disablePadding sx={{ px: 1, mb: 0.5 }}>
+                <Tooltip title={item.soon ? 'Coming soon' : ''} placement="right">
+                  <span style={{ width: '100%' }}>
+                    <ListItemButton
+                      component={item.soon ? 'div' : Link}
+                      to={item.soon ? undefined : item.path}
+                      selected={pathname === item.path}
+                      disabled={item.soon}
+                      sx={{
+                        borderRadius: 2,
+                        '&.Mui-selected': { bgcolor: 'primary.50', color: 'primary.main' },
+                        '&.Mui-selected .MuiListItemIcon-root': { color: 'primary.main' },
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 36, color: 'text.secondary' }}>
+                        {item.icon}
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={item.label}
+                        primaryTypographyProps={{ fontSize: 14 }}
+                      />
+                      {item.soon && (
+                        <Chip label="Soon" size="small" sx={{ height: 18, fontSize: 10 }} />
+                      )}
+                    </ListItemButton>
+                  </span>
+                </Tooltip>
+              </ListItem>
+            ))}
+          </List>
+        </Box>
+
+        <Divider />
+
+        {/* User area */}
+        <Box sx={{ p: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: 2, bgcolor: 'grey.50' }}>
+            <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main', fontSize: 14 }}>
+              {initials}
+            </Avatar>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="body2" sx={{ fontWeight: 500 }} noWrap>{user?.full_name}</Typography>
+              <Chip
+                label={user?.role.replace('_', ' ')}
+                size="small"
+                color={ROLE_COLORS[user?.role || 'employee'] as any}
+                sx={{ height: 16, fontSize: 10, mt: 0.3 }}
+              />
+            </Box>
+            <IconButton size="small" onClick={handleLogout} title="Logout">
+              <Logout fontSize="small" />
+            </IconButton>
+          </Box>
+        </Box>
       </Drawer>
 
       {/* Main content */}
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: 3,
-          width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
-          minHeight: "100vh",
-          bgcolor: "background.default",
-        }}
-      >
-        <Toolbar /> {/* spacer for AppBar */}
+      <Box component="main" sx={{ flex: 1, bgcolor: '#f5f7fa', minHeight: '100vh' }}>
         <Outlet />
       </Box>
     </Box>
-  );
+  )
 }

@@ -15,34 +15,44 @@ export type Department =
   | "Security"
   | "Other";
 
-export type UserRole = "admin" | "doctor" | "employee";
+export type UserRole = "admin" | "doctor" | "employee" | "pharmacy_staff";
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export interface LoginRequest {
-  username: string; // email or username (OAuth2PasswordRequestForm)
+  email: string;
   password: string;
 }
 
 export interface RegisterRequest {
   email: string;
-  username: string;
+  full_name: string;
   password: string;
+  employee_id?: string;
   role?: UserRole;
 }
 
 export interface TokenResponse {
   access_token: string;
+  refresh_token: string;
   token_type: string;
+  expires_in: number;
+  user: UserRead;
 }
 
 export interface UserRead {
   id: number;
   email: string;
-  username: string;
+  full_name: string;
+  employee_id?: string;
   role: UserRole;
+  sensor_consent: boolean;
   is_active: boolean;
+  is_verified: boolean;
   created_at: string;
+  last_login?: string;
 }
+
+export interface User extends UserRead {}
 
 // ── Patient (mirror src/schemas/patient.py) ───────────────────────────────────
 export interface PatientCreate {

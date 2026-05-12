@@ -1,19 +1,10 @@
 import client from "./client";
 import type { LoginRequest, RegisterRequest, TokenResponse, UserRead } from "../types";
 
-// ── Login (OAuth2 form) ───────────────────────────────────────────────────────
+// ── Login ─────────────────────────────────────────────────────────────────────
 export async function login(data: LoginRequest): Promise<TokenResponse> {
-  // FastAPI OAuth2PasswordRequestForm expects form-encoded body
-  const formData = new URLSearchParams();
-  formData.append("username", data.username);
-  formData.append("password", data.password);
-
-  const response = await client.post<TokenResponse>("/api/auth/login", formData, {
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-  });
-
-  // Persist token immediately so interceptors pick it up
-  localStorage.setItem("access_token", response.data.access_token);
+  // Backend expects JSON body with email and password
+  const response = await client.post<TokenResponse>("/api/auth/login", data);
   return response.data;
 }
 
@@ -32,4 +23,5 @@ export async function getMe(): Promise<UserRead> {
 // ── Logout (client-side only — no server endpoint needed) ────────────────────
 export function logout(): void {
   localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
 }

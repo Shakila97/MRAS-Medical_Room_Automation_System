@@ -1,89 +1,72 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-  type ReactNode,
-} from "react";
-import type { UserRead, LoginRequest, RegisterRequest } from "../types";
-import { login as apiLogin, register as apiRegister, logout as apiLogout, getMe } from "../api/auth";
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import * as authApi from '../api/auth'
+import type { User } from '../types'
 
-// ── Shape ─────────────────────────────────────────────────────────────────────
-interface AuthContextValue {
-  user: UserRead | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-
-  // Role helpers
-  isAdmin: boolean;
-  isDoctor: boolean;
-  isEmployee: boolean;
-
-  // Actions
-  login: (data: LoginRequest) => Promise<void>;
-  register: (data: RegisterRequest) => Promise<void>;
-  logout: () => void;
+interface AuthContextType {
+  user: User | null
+  loading: boolean
+  login: (email: string, password: string) => Promise<void>
+  logout: () => void
+  isAuthenticated: boolean
+  isLoading: boolean
+  isDoctor: boolean
+  isAdmin: boolean
+  isEmployee: boolean
 }
 
-// ── Context ───────────────────────────────────────────────────────────────────
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | null>(null)
 
-// ── Provider ──────────────────────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserRead | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  // On mount — try to restore session from stored token
+  // ── Load user on app start if token exists ────────────────────────────────
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      setIsLoading(false);
-      return;
+    const token = localStorage.getItem('access_token')
+    if (token) {
+      authApi.getMe()
+        .then(setUser)
+        .catch(() => localStorage.clear())
+        .finally(() => setLoading(false))
+    } else {
+      setLoading(false)
     }
-    getMe()
-      .then(setUser)
-      .catch(() => {
-        localStorage.removeItem("access_token");
-      })
-      .finally(() => setIsLoading(false));
-  }, []);
+  }, [])
 
-  const login = useCallback(async (data: LoginRequest) => {
-    await apiLogin(data); // token persisted inside apiLogin
-    const me = await getMe();
-    setUser(me);
-  }, []);
+  const login = async (email: string, password: string) => {
+    const data = await authApi.login({ email, password })
+    localStorage.setItem('access_token', data.access_token)
+    localStorage.setItem('refresh_token', data.refresh_token)
+    setUser(data.user)
+  }
 
-  const register = useCallback(async (data: RegisterRequest) => {
-    await apiRegister(data);
-    // After registration, auto-login
-    await login({ username: data.username, password: data.password });
-  }, [login]);
+  const logout = () => {
+    authApi.logout()
+    setUser(null)
+  }
 
-  const logout = useCallback(() => {
-    apiLogout();
-    setUser(null);
-  }, []);
+  const isAuthenticated = !!user
+  const isLoading = loading
 
-  const value: AuthContextValue = {
-    user,
-    isAuthenticated: user !== null,
-    isLoading,
-    isAdmin: user?.role === "admin",
-    isDoctor: user?.role === "doctor",
-    isEmployee: user?.role === "employee",
-    login,
-    register,
-    logout,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      login,
+      logout,
+      isAuthenticated,
+      isLoading,
+      isDoctor: user?.role === 'doctor',
+      isAdmin: user?.role === 'admin',
+      isEmployee: user?.role === 'employee',
+    }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
-// ── Hook ──────────────────────────────────────────────────────────────────────
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within <AuthProvider>");
-  return ctx;
+export function useAuth() {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used inside AuthProvider')
+  return ctx
 }

@@ -19,7 +19,7 @@ export default function ProtectedRoute({
   children,
   allowedRoles,
 }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isLoading, user, isAuthenticated } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
