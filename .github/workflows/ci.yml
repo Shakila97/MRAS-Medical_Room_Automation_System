@@ -37,7 +37,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Lint (Ruff)
-        run: ruff check src/
+        run: ruff check src/ --no-cache
 
       - name: Type check (Mypy)
         run: mypy src/
