@@ -53,7 +53,10 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
 
-            {/* Protected routes — all wrapped in Layout */}
+            {/* Root redirect → login */}
+            <Route path="/" element={<Navigate to="/login" replace />} />
+
+            {/* Protected layout route (no path) */}
             <Route
               element={
                 <ProtectedRoute>
@@ -62,12 +65,10 @@ export default function App() {
               }
             >
               <Route path="/dashboard" element={<DashboardPage />} />
-              {/* Catch-all inside protected area */}
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
 
-            {/* Root redirect */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            {/* Global catch-all — outside protected so unauthed users go to login */}
+            <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>
