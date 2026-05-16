@@ -1,0 +1,289 @@
+/* ============================================================================
+   MRAS DESIGN TOKENS
+   Medical Room Automation System v3.0
+   All visual primitives — colour, type, spacing, radius, shadow, motion.
+   ============================================================================ */
+
+/* Fonts: IBM Plex Sans + Mono from Google Fonts.
+   ⚠️ FONT SUBSTITUTION: IBM Plex is the closest open-source match to the
+   clinical-data-grade humanist sans implied by the brief. If the team has
+   licensed a different family (Söhne, Aktiv Grotesk, ABC Diatype), swap here. */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap');
+
+:root {
+  /* ----- Colour primitives ------------------------------------------------- */
+
+  /* Teal — primary brand */
+  --teal-50:  #F0FDFA;
+  --teal-100: #CCFBF1;
+  --teal-200: #99F6E4;
+  --teal-300: #5EEAD4;
+  --teal-400: #2DD4BF;
+  --teal-500: #14B8A6;
+  --teal-600: #0F766E;   /* PRIMARY */
+  --teal-700: #115E59;
+  --teal-800: #134E4A;
+  --teal-900: #0B3F3C;
+
+  /* Slate neutrals (cool grey) */
+  --slate-0:   #FFFFFF;
+  --slate-50:  #F8FAFC;
+  --slate-100: #F1F5F9;
+  --slate-200: #E2E8F0;
+  --slate-300: #CBD5E1;
+  --slate-400: #94A3B8;
+  --slate-500: #64748B;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1E293B;
+  --slate-900: #0F172A;
+
+  /* Semantic primitives */
+  --green-100: #D1FAE5;
+  --green-500: #10B981;
+  --green-700: #047857;
+  --amber-100: #FEF3C7;
+  --amber-500: #F59E0B;
+  --amber-700: #B45309;
+  --red-100:   #FEE2E2;
+  --red-500:   #EF4444;
+  --red-700:   #B91C1C;
+  --blue-100:  #DBEAFE;
+  --blue-500:  #3B82F6;
+  --blue-700:  #1D4ED8;
+
+  /* ----- Semantic colour roles -------------------------------------------- */
+  --primary:        var(--teal-600);
+  --primary-hover:  var(--teal-700);
+  --primary-press:  var(--teal-800);
+  --primary-tint:   var(--teal-50);
+
+  --accent:         var(--amber-500);
+  --accent-tint:    var(--amber-100);
+
+  /* Foreground / text */
+  --fg-1: var(--slate-900);   /* primary text / headings */
+  --fg-2: var(--slate-700);   /* body */
+  --fg-3: var(--slate-500);   /* secondary / labels */
+  --fg-4: var(--slate-400);   /* tertiary / disabled */
+  --fg-on-primary: #FFFFFF;
+
+  /* Background / surface */
+  --bg-canvas:   var(--slate-50);    /* page */
+  --bg-hover:    var(--slate-100);   /* row/list hover */
+  --bg-selected: var(--teal-50);
+  --surface-1:   var(--slate-0);     /* cards */
+  --surface-2:   var(--slate-50);    /* nested / inset */
+
+  /* Border */
+  --border-1: var(--slate-200);   /* default */
+  --border-2: var(--slate-300);   /* stronger / dividers between regions */
+  --border-focus: var(--teal-600);
+
+  /* Status */
+  --success:    var(--green-500);
+  --success-bg: var(--green-100);
+  --success-fg: var(--green-700);
+  --warning:    var(--amber-500);
+  --warning-bg: var(--amber-100);
+  --warning-fg: var(--amber-700);
+  --danger:     var(--red-500);
+  --danger-bg:  var(--red-100);
+  --danger-fg:  var(--red-700);
+  --info:       var(--blue-500);
+  --info-bg:    var(--blue-100);
+  --info-fg:    var(--blue-700);
+
+  /* JRISSI risk scale (mental-health-specific, named distinctly) */
+  --risk-low:       var(--green-500);
+  --risk-low-bg:    var(--green-100);
+  --risk-moderate:  var(--amber-500);
+  --risk-moderate-bg: var(--amber-100);
+  --risk-high:      var(--red-500);
+  --risk-high-bg:   var(--red-100);
+
+  /* Role accents — sparing use as a chip / left-edge stripe */
+  --role-doctor:   var(--teal-600);
+  --role-employee: var(--blue-500);
+  --role-pharmacy: #7C3AED;       /* violet, distinct from teal */
+  --role-admin:    var(--slate-700);
+
+  /* ----- Type primitives -------------------------------------------------- */
+  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Type scale (px) — modular but not strict */
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-16: 16px;
+  --fs-18: 18px;
+  --fs-20: 20px;
+  --fs-24: 24px;
+  --fs-30: 30px;
+  --fs-36: 36px;
+  --fs-48: 48px;
+
+  /* Line heights */
+  --lh-tight:  1.15;
+  --lh-snug:   1.3;
+  --lh-normal: 1.5;
+  --lh-loose:  1.65;
+
+  /* Letter spacing */
+  --ls-tight:  -0.01em;
+  --ls-normal: 0;
+  --ls-eyebrow: 0.04em;
+
+  /* ----- Spacing scale (4 px base) ---------------------------------------- */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* ----- Radius ----------------------------------------------------------- */
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   16px;
+  --radius-xl:   24px;
+  --radius-pill: 999px;
+
+  /* ----- Shadow (cool-grey, low opacity) ---------------------------------- */
+  --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 1px rgba(15, 23, 42, 0.03);
+  --shadow-2: 0 4px 12px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-3: 0 12px 32px rgba(15, 23, 42, 0.10), 0 4px 8px rgba(15, 23, 42, 0.04);
+  --shadow-focus: 0 0 0 2px var(--surface-1), 0 0 0 4px var(--primary);
+
+  /* ----- Motion ----------------------------------------------------------- */
+  --dur-micro:  120ms;
+  --dur-fast:   180ms;
+  --dur-medium: 260ms;
+  --ease-std:   cubic-bezier(0.2, 0, 0, 1);    /* Material standard */
+  --ease-linear: linear;
+
+  /* ----- Layout constants ------------------------------------------------- */
+  --appbar-h:     56px;
+  --sidebar-w:    240px;
+  --sidebar-w-c:  64px;
+  --content-max:  1440px;
+}
+
+/* ============================================================================
+   SEMANTIC TYPE
+   Use these class names rather than re-deriving font-size/weight every time.
+   ============================================================================ */
+
+.type-display-l {
+  font: 700 var(--fs-48)/var(--lh-tight) var(--font-sans);
+  letter-spacing: var(--ls-tight);
+  color: var(--fg-1);
+}
+.type-display-m {
+  font: 600 var(--fs-36)/var(--lh-tight) var(--font-sans);
+  letter-spacing: var(--ls-tight);
+  color: var(--fg-1);
+}
+.type-h1 {
+  font: 600 var(--fs-30)/var(--lh-snug) var(--font-sans);
+  letter-spacing: var(--ls-tight);
+  color: var(--fg-1);
+}
+.type-h2 {
+  font: 600 var(--fs-24)/var(--lh-snug) var(--font-sans);
+  color: var(--fg-1);
+}
+.type-h3 {
+  font: 600 var(--fs-20)/var(--lh-snug) var(--font-sans);
+  color: var(--fg-1);
+}
+.type-h4 {
+  font: 600 var(--fs-16)/var(--lh-snug) var(--font-sans);
+  color: var(--fg-1);
+}
+.type-body-l {
+  font: 400 var(--fs-16)/var(--lh-normal) var(--font-sans);
+  color: var(--fg-2);
+}
+.type-body {
+  font: 400 var(--fs-14)/var(--lh-normal) var(--font-sans);
+  color: var(--fg-2);
+}
+.type-body-s {
+  font: 400 var(--fs-13)/var(--lh-normal) var(--font-sans);
+  color: var(--fg-2);
+}
+.type-label {
+  font: 500 var(--fs-13)/var(--lh-snug) var(--font-sans);
+  color: var(--fg-2);
+}
+.type-eyebrow {
+  font: 600 var(--fs-12)/var(--lh-snug) var(--font-sans);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+.type-caption {
+  font: 400 var(--fs-12)/var(--lh-snug) var(--font-sans);
+  color: var(--fg-3);
+}
+.type-mono {
+  font: 400 var(--fs-13)/var(--lh-snug) var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-2);
+}
+.type-clinical {
+  font: 500 var(--fs-20)/var(--lh-snug) var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: var(--fg-1);
+}
+
+/* ============================================================================
+   MATERIAL SYMBOLS ICON CLASS
+   ============================================================================ */
+.ms {
+  font-family: 'Material Symbols Rounded';
+  font-weight: 400;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  user-select: none;
+}
+.ms.is-filled  { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+.ms.is-20      { font-size: 20px; font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; }
+.ms.is-32      { font-size: 32px; font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 40; }
+.ms.is-48      { font-size: 48px; font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 48; }
+
+/* ============================================================================
+   GLOBAL RESET (lightweight)
+   ============================================================================ */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-sans);
+  color: var(--fg-2);
+  background: var(--bg-canvas);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
