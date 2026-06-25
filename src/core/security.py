@@ -9,22 +9,24 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from jose import jwt
-from passlib.context import CryptContext
+import bcrypt
 
 from src.core.config import settings
 
 # ── Password Hashing ──────────────────────────────────────────────────────────
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def hash_password(plain: str) -> str:
     """Return the bcrypt hash of *plain*."""
-    return _pwd_context.hash(plain)
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(plain.encode('utf-8'), salt).decode('utf-8')
 
 
 def verify_password(plain: str, hashed: str) -> bool:
     """Return True if *plain* matches the stored *hashed* password."""
-    return _pwd_context.verify(plain, hashed)
+    try:
+        return bcrypt.checkpw(plain.encode('utf-8'), hashed.encode('utf-8'))
+    except ValueError:
+        return False
 
 
 # ── JWT Helpers ───────────────────────────────────────────────────────────────

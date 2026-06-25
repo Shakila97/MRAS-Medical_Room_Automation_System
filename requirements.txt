@@ -7,11 +7,12 @@ uvicorn[standard]==0.30.6
 # ---- ORM / Database ----
 sqlmodel==0.0.21
 sqlalchemy[asyncio]==2.0.35
-asyncpg==0.29.0
+aiosqlite
 alembic==1.13.3
 
 # ---- Settings ----
 pydantic-settings==2.5.2
+email-validator
 
 # ---- Auth ----
 python-jose[cryptography]==3.3.0
@@ -19,11 +20,10 @@ passlib[bcrypt]==1.7.4
 python-multipart==0.0.9
 
 # ---- ML / Forecasting ----
-scikit-learn==1.5.2
-prophet==1.1.5
-pandas==2.2.3
-numpy==1.26.4
-
+scikit-learn>=1.5.2
+prophet>=1.1.5
+pandas>=2.2.3
+numpy
 # ---- LLM ----
 anthropic==0.34.2
 

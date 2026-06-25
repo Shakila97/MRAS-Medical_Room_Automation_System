@@ -1,71 +1,149 @@
 """
-MRAS v3.0 — Notification Engine (Closed-Loop Smart Notifications)
-Generates personalised, AI-driven health interventions and delivers them
-via WhatsApp (Twilio) and Email (SendGrid).
-
-Flow:
-    1. Risk event detected (JRISSI High/Critical or Forecaster alert)
-    2. Claude API generates personalised intervention message
-    3. Message delivered via Twilio WhatsApp + SendGrid Email
-    4. Escalation monitor tracks resolution (14-day window)
+MRAS v3.0 — Notification Engine
+Create, acknowledge, and resolve closed-loop notifications.
+WebSocket connection manager for live push to connected clients.
 """
+import json
+from datetime import datetime, timezone
+from typing import Dict, List, Optional
 
-import anthropic
-import httpx
+from fastapi import WebSocket
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
 
-from src.core.config import settings
+from src.models import Notification, NotificationKind, NotificationTone, AuditLog
+from src.models.user import User
 
 
-class NotificationEngine:
-    def __init__(self, session: AsyncSession):
-        self.session = session
-        self.claude = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+# ── WebSocket Connection Manager ──────────────────────────────────────────────
 
-    async def send_intervention(self, employee_id: int, risk_context: dict) -> dict:
-        """
-        Generate and dispatch a personalised health intervention.
-        """
-        message = await self._generate_message(risk_context)
-        whatsapp_status = await self._send_whatsapp(employee_id, message)
-        email_status = await self._send_email(employee_id, message)
+class ConnectionManager:
+    """Manages active WebSocket connections, grouped by role."""
 
-        return {
-            "employee_id": employee_id,
-            "message": message,
-            "whatsapp": whatsapp_status,
-            "email": email_status,
+    def __init__(self):
+        # role → list of active WebSocket connections
+        self._connections: Dict[str, List[WebSocket]] = {}
+
+    async def connect(self, websocket: WebSocket, role: str) -> None:
+        await websocket.accept()
+        self._connections.setdefault(role, []).append(websocket)
+
+    def disconnect(self, websocket: WebSocket, role: str) -> None:
+        conns = self._connections.get(role, [])
+        if websocket in conns:
+            conns.remove(websocket)
+
+    async def broadcast_to_role(self, role: str, event: dict) -> None:
+        """Push a JSON event to all clients with the given role."""
+        payload = json.dumps(event)
+        dead = []
+        for ws in self._connections.get(role, []):
+            try:
+                await ws.send_text(payload)
+            except Exception:
+                dead.append(ws)
+        for ws in dead:
+            self.disconnect(ws, role)
+
+    async def broadcast_to_roles(self, roles: List[str], event: dict) -> None:
+        for role in roles:
+            await self.broadcast_to_role(role, event)
+
+
+# Global singleton — imported by the notifications router
+manager = ConnectionManager()
+
+
+# ── Notification CRUD ─────────────────────────────────────────────────────────
+
+async def create_notification(
+    kind: NotificationKind,
+    title: str,
+    body: str,
+    target_roles: List[str],
+    tone: NotificationTone = NotificationTone.INFO,
+    cta_label: Optional[str] = None,
+    cta_url: Optional[str] = None,
+    db: Optional[AsyncSession] = None,
+) -> Notification:
+    notif = Notification(
+        kind=kind,
+        tone=tone,
+        title=title,
+        body=body,
+        target_role=json.dumps(target_roles),
+        cta_label=cta_label,
+        cta_url=cta_url,
+    )
+    if db:
+        db.add(notif)
+        await db.flush()
+        await db.refresh(notif)
+
+        # Push to all connected clients of the target roles
+        event = {
+            "type": "notification",
+            "data": {
+                "id": notif.id,
+                "kind": notif.kind.value,
+                "tone": notif.tone.value,
+                "title": notif.title,
+                "body": notif.body,
+            }
         }
+        await manager.broadcast_to_roles(target_roles, event)
 
-    async def _generate_message(self, risk_context: dict) -> str:
-        """Use Claude API to generate a personalised intervention."""
-        prompt = (
-            f"You are MRAS, a corporate health assistant. "
-            f"An employee has the following risk context: {risk_context}. "
-            f"Write a concise, empathetic, and actionable health intervention message "
-            f"(max 3 sentences) that they should receive on WhatsApp."
-        )
-        response = self.claude.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=200,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        return response.content[0].text
+    return notif
 
-    async def _send_whatsapp(self, employee_id: int, message: str) -> str:
-        """Send message via Twilio WhatsApp API. TODO: fetch phone from DB."""
-        # TODO: real Twilio call
-        return "queued"
 
-    async def _send_email(self, employee_id: int, message: str) -> str:
-        """Send email via SendGrid. TODO: fetch email from DB."""
-        # TODO: real SendGrid call
-        return "queued"
+async def list_notifications(
+    db: AsyncSession,
+    notif_status: Optional[str] = "open",
+    skip: int = 0,
+    limit: int = 30,
+) -> List[Notification]:
+    stmt = select(Notification)
+    if notif_status == "open":
+        stmt = stmt.where(Notification.resolved_at.is_(None))
+    elif notif_status == "resolved":
+        stmt = stmt.where(Notification.resolved_at.is_not(None))
+    result = await db.execute(
+        stmt.order_by(Notification.created_at.desc()).offset(skip).limit(limit)
+    )
+    return result.scalars().all()
 
-    async def check_escalation(self, employee_id: int) -> bool:
-        """
-        Return True if High/Critical risk has persisted 14+ days without a consultation.
-        Triggers a doctor alert if True.
-        """
-        # TODO: query risk_log table for sustained High/Critical entries
-        return False
+
+async def ack_notification(notif_id: int, user: User, db: AsyncSession) -> Notification:
+    notif = await _get_or_404(notif_id, db)
+    if notif.acked_at:
+        return notif
+    notif.acked_at = datetime.now(timezone.utc)
+    notif.acked_by = user.id
+    notif.stage = "acknowledged"
+    notif.stage_index = 1
+    db.add(notif)
+    return notif
+
+
+async def resolve_notification(notif_id: int, user: User, db: AsyncSession) -> Notification:
+    notif = await _get_or_404(notif_id, db)
+    notif.resolved_at = datetime.now(timezone.utc)
+    notif.stage = "resolved"
+    notif.stage_index = 2
+    db.add(notif)
+
+    db.add(AuditLog(
+        actor_id=user.id, actor_label=user.email,
+        action="notification.resolve", target=f"notification:{notif_id}",
+        level="info",
+    ))
+    return notif
+
+
+async def _get_or_404(notif_id: int, db: AsyncSession) -> Notification:
+    result = await db.execute(select(Notification).where(Notification.id == notif_id))
+    notif = result.scalar_one_or_none()
+    if not notif:
+        from fastapi import HTTPException, status
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Notification not found")
+    return notif
