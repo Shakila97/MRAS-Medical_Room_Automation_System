@@ -1,0 +1,13 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64" width="240" height="64" role="img" aria-label="MRAS">
+  
+  <g transform="translate(8, 8)">
+    <rect x="0" y="0" width="48" height="48" rx="10" fill="#0F766E"></rect>
+    
+    <path d="M14 24 H22 V16 H26 V24 H34 V28 H26 V36 H22 V28 H14 Z" fill="#FFFFFF"></path>
+    <path d="M14 41 L19 41 L21 36 L24 44 L27 39 L34 39" stroke="#5EEAD4" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"></path>
+  </g>
+  
+  <text x="68" y="42" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="28" font-weight="700" fill="#0F172A" letter-spacing="-0.5">MRAS</text>
+  <text x="156" y="42" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="14" font-weight="500" fill="#64748B" letter-spacing="0.5">v3.0</text>
+</svg>

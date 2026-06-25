@@ -1,0 +1,697 @@
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Sora:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg: var(--color-background-primary);
+    --bg2: var(--color-background-secondary);
+    --bg3: var(--color-background-tertiary);
+    --text: var(--color-text-primary);
+    --muted: var(--color-text-secondary);
+    --hint: var(--color-text-tertiary);
+    --border: var(--color-border-tertiary);
+    --border2: var(--color-border-secondary);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Sora', var(--font-sans), sans-serif;
+    --accent: #0057D9;
+    --accent2: #00B386;
+    --warn: #D97706;
+    --danger: #C0392B;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); }
+
+  .doc { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+  .cover { border: 0.5px solid var(--border2); border-radius: 16px; padding: 2.5rem 2rem 2rem; margin-bottom: 2.5rem; background: var(--bg2); }
+  .cover-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
+  .cover-badge { font-family: var(--mono); font-size: 11px; color: var(--accent); background: rgba(0,87,217,0.08); border: 0.5px solid rgba(0,87,217,0.25); border-radius: 6px; padding: 3px 10px; }
+  .cover-title { font-size: 32px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.15; margin-bottom: 0.4rem; }
+  .cover-sub { font-size: 14px; color: var(--muted); margin-bottom: 1.5rem; }
+  .cover-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+  .meta-item { background: var(--bg); border: 0.5px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; }
+  .meta-label { font-size: 10px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--hint); margin-bottom: 4px; }
+  .meta-val { font-size: 13px; font-weight: 500; color: var(--text); }
+
+  .toc { border: 0.5px solid var(--border); border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 2.5rem; background: var(--bg2); }
+  .toc-title { font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.1em; color: var(--hint); margin-bottom: 1rem; }
+  .toc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px; }
+  .toc-item { font-size: 13px; color: var(--muted); padding: 4px 0; cursor: pointer; }
+  .toc-item:hover { color: var(--accent); }
+  .toc-num { font-family: var(--mono); font-size: 11px; color: var(--hint); margin-right: 6px; }
+
+  .section { margin-bottom: 3rem; }
+  .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 0.5px solid var(--border2); }
+  .section-num { font-family: var(--mono); font-size: 11px; color: var(--accent); background: rgba(0,87,217,0.08); border-radius: 5px; padding: 2px 8px; }
+  .section-title { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
+
+  .sub { margin-bottom: 1.5rem; }
+  .sub-title { font-size: 14px; font-weight: 600; color: var(--muted); margin-bottom: 0.75rem; letter-spacing: 0.01em; font-family: var(--mono); }
+
+  .prose { font-size: 14px; color: var(--muted); line-height: 1.7; margin-bottom: 0.75rem; }
+
+  pre.code { background: var(--bg3); border: 0.5px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; overflow-x: auto; font-family: var(--mono); font-size: 12px; line-height: 1.65; color: var(--text); margin-bottom: 1rem; white-space: pre; }
+  .code-label { font-family: var(--mono); font-size: 10px; color: var(--hint); margin-bottom: 4px; }
+  .c-accent { color: var(--accent); }
+  .c-green { color: var(--accent2); }
+  .c-warn { color: var(--warn); }
+  .c-red { color: var(--danger); }
+  .c-muted { color: var(--hint); }
+
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1rem; }
+  .pill { font-family: var(--mono); font-size: 11px; padding: 4px 10px; border-radius: 20px; border: 0.5px solid var(--border2); color: var(--muted); }
+  .pill.blue { background: rgba(0,87,217,0.07); color: var(--accent); border-color: rgba(0,87,217,0.2); }
+  .pill.green { background: rgba(0,179,134,0.07); color: var(--accent2); border-color: rgba(0,179,134,0.2); }
+  .pill.warn { background: rgba(217,119,6,0.07); color: var(--warn); border-color: rgba(217,119,6,0.2); }
+  .pill.red { background: rgba(192,57,43,0.07); color: var(--danger); border-color: rgba(192,57,43,0.2); }
+
+  .principle-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 1rem; }
+  .principle-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 10px; padding: 1rem; }
+  .principle-icon { font-size: 16px; margin-bottom: 6px; }
+  .principle-name { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+  .principle-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  .stack-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 1rem; }
+  .stack-table th { text-align: left; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--hint); padding: 6px 10px; border-bottom: 0.5px solid var(--border2); }
+  .stack-table td { padding: 9px 10px; border-bottom: 0.5px solid var(--border); vertical-align: top; }
+  .stack-table tr:last-child td { border-bottom: none; }
+  .stack-table .layer { font-weight: 500; font-size: 12px; color: var(--text); }
+  .stack-table .tech { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+  .stack-table .why { color: var(--muted); font-size: 12px; }
+
+  .rule { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; }
+  .rule-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 6px; }
+  .rule-dot.green { background: var(--accent2); }
+  .rule-dot.warn { background: var(--warn); }
+  .rule-dot.red { background: var(--danger); }
+  .rule-text { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .rule-text strong { font-weight: 600; color: var(--text); }
+  .rule-text code { font-family: var(--mono); font-size: 11px; background: var(--bg3); border: 0.5px solid var(--border); border-radius: 4px; padding: 1px 5px; color: var(--text); }
+
+  .badge { display: inline-block; font-family: var(--mono); font-size: 10px; padding: 2px 7px; border-radius: 4px; margin-left: 6px; }
+  .badge.good { background: rgba(0,179,134,0.1); color: var(--accent2); border: 0.5px solid rgba(0,179,134,0.25); }
+  .badge.bad { background: rgba(192,57,43,0.1); color: var(--danger); border: 0.5px solid rgba(192,57,43,0.25); }
+  .badge.note { background: rgba(0,87,217,0.08); color: var(--accent); border: 0.5px solid rgba(0,87,217,0.2); }
+
+  .checklist { list-style: none; }
+  .checklist li { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--muted); padding: 5px 0; border-bottom: 0.5px solid var(--border); }
+  .checklist li:last-child { border-bottom: none; }
+  .check-box { width: 15px; height: 15px; border: 1px solid var(--border2); border-radius: 3px; flex-shrink: 0; margin-top: 2px; }
+  .checklist .cat { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--hint); padding: 10px 0 4px; font-weight: 500; }
+
+  .dir-tree { font-family: var(--mono); font-size: 12px; line-height: 1.8; color: var(--text); background: var(--bg3); border: 0.5px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; }
+  .dir-comment { color: var(--hint); }
+  .dir-file { color: var(--accent); }
+  .dir-folder { color: var(--accent2); font-weight: 600; }
+
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem; }
+  .cmp-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 10px; padding: 1rem; }
+  .cmp-label { font-size: 11px; font-family: var(--mono); margin-bottom: 8px; }
+  .cmp-label.bad-label { color: var(--danger); }
+  .cmp-label.good-label { color: var(--accent2); }
+  .cmp-code { font-family: var(--mono); font-size: 11px; line-height: 1.6; color: var(--text); }
+
+  .divider { border: none; border-top: 0.5px solid var(--border); margin: 2rem 0; }
+
+  @media (max-width: 600px) {
+    .compare { grid-template-columns: 1fr; }
+    .cover-meta { grid-template-columns: 1fr 1fr; }
+    .principle-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+
+<div class="doc">
+
+  <!-- COVER -->
+  <div class="cover">
+    <div class="cover-top">
+      <div>
+        <div class="cover-badge">MRAS v3.0 — Official Dev Spec</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--hint)">v1.0 — April 2026</div>
+      </div>
+    </div>
+    <div class="cover-title">MRAS Python<br>Development Blueprint</div>
+    <div class="cover-sub">The standard reference for building the Medical Room Automation System</div>
+    <div class="cover-meta">
+      <div class="meta-item">
+        <div class="meta-label">Framework</div>
+        <div class="meta-val">FastAPI 0.115+</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Language</div>
+        <div class="meta-val">Python 3.12</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Database</div>
+        <div class="meta-val">PostgreSQL 15 + TimescaleDB</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Philosophy</div>
+        <div class="meta-val">API-First · Async · Modular</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Frontend</div>
+        <div class="meta-val">React 18 + TypeScript + MUI</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Deployment</div>
+        <div class="meta-val">Docker → AWS ECS Fargate</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <div class="toc-title">Table of Contents</div>
+    <div class="toc-grid">
+      <div class="toc-item"><span class="toc-num">01</span>Core Philosophy & Stack</div>
+      <div class="toc-item"><span class="toc-num">02</span>Project Architecture</div>
+      <div class="toc-item"><span class="toc-num">03</span>FastAPI Patterns</div>
+      <div class="toc-item"><span class="toc-num">04</span>Database & ORM</div>
+      <div class="toc-item"><span class="toc-num">05</span>Authentication & RBAC</div>
+      <div class="toc-item"><span class="toc-num">06</span>ML / AI Layer</div>
+      <div class="toc-item"><span class="toc-num">07</span>Background Tasks</div>
+      <div class="toc-item"><span class="toc-num">08</span>Security & Privacy</div>
+      <div class="toc-item"><span class="toc-num">09</span>Testing Strategy</div>
+      <div class="toc-item"><span class="toc-num">10</span>Pre-Launch Checklist</div>
+    </div>
+  </div>
+
+  <!-- SECTION 1 -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <span class="section-title">Core Philosophy & Stack</span>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">1.1 Guiding Principles</div>
+      <div class="principle-grid">
+        <div class="principle-card">
+          <div class="principle-name">Async by Default</div>
+          <div class="principle-desc">Every endpoint and DB call uses <code style="font-family:var(--mono);font-size:11px">async/await</code>. Never block the event loop with synchronous I/O.</div>
+        </div>
+        <div class="principle-card">
+          <div class="principle-name">Type Everything</div>
+          <div class="principle-desc">All request bodies, responses, and DB models use Pydantic v2 + SQLModel. No untyped dicts crossing module boundaries.</div>
+        </div>
+        <div class="principle-card">
+          <div class="principle-name">Modular Monolith</div>
+          <div class="principle-desc">Single deployable unit, but cleanly separated modules with explicit interfaces. Easy to split into microservices if needed.</div>
+        </div>
+        <div class="principle-card">
+          <div class="principle-name">Dependency Diet</div>
+          <div class="principle-desc">Do not add a library if the stdlib or FastAPI built-ins can handle it. Every package in requirements.txt must justify its weight.</div>
+        </div>
+        <div class="principle-card">
+          <div class="principle-name">Privacy by Design</div>
+          <div class="principle-desc">PHI (protected health information) is AES-256 encrypted at rest. All sensor collection is opt-in only.</div>
+        </div>
+        <div class="principle-card">
+          <div class="principle-name">Graceful Degradation</div>
+          <div class="principle-desc">Every external dependency (climate API, LLM, wearable) fails safely. Predictions are advisory; no feature blocks core workflows.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">1.2 The Full Stack</div>
+      <table class="stack-table">
+        <thead>
+          <tr><th>Layer</th><th>Technology</th><th>Reason</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="layer">API Framework</td><td class="tech">FastAPI 0.115</td><td class="why">Native async, automatic OpenAPI docs, Pydantic v2 request validation</td></tr>
+          <tr><td class="layer">Language</td><td class="tech">Python 3.12</td><td class="why">Type annotations, performance improvements, latest stdlib</td></tr>
+          <tr><td class="layer">ORM / Models</td><td class="tech">SQLModel + SQLAlchemy 2.0</td><td class="why">Single model definition for both DB schema and Pydantic validation</td></tr>
+          <tr><td class="layer">Database</td><td class="tech">PostgreSQL 15 + TimescaleDB</td><td class="why">ACID + efficient time-series queries for longitudinal health data</td></tr>
+          <tr><td class="layer">Migrations</td><td class="tech">Alembic</td><td class="why">Version-controlled, reversible schema migrations</td></tr>
+          <tr><td class="layer">ML / Forecasting</td><td class="tech">scikit-learn + Prophet</td><td class="why">Risk classification + seasonal time-series health forecasting</td></tr>
+          <tr><td class="layer">LLM Integration</td><td class="tech">Anthropic Claude API</td><td class="why">Generates behaviour correction text and doctor briefing narratives</td></tr>
+          <tr><td class="layer">Notifications</td><td class="tech">Twilio + SendGrid</td><td class="why">WhatsApp (patient alerts) + Email (doctor briefings)</td></tr>
+          <tr><td class="layer">Climate Data</td><td class="tech">OpenWeatherMap + Tomorrow.io</td><td class="why">Primary + fallback for environmental disease forecasting</td></tr>
+          <tr><td class="layer">Scheduler</td><td class="tech">APScheduler</td><td class="why">Nightly prediction batch jobs; daily environmental data pull</td></tr>
+          <tr><td class="layer">Frontend</td><td class="tech">React 18 + TypeScript + MUI</td><td class="why">Role-based dashboards, health timeline UI, doctor briefing panel</td></tr>
+          <tr><td class="layer">Auth</td><td class="tech">python-jose + passlib/bcrypt</td><td class="why">JWT session management, role-based access control</td></tr>
+          <tr><td class="layer">Container</td><td class="tech">Docker + Docker Compose</td><td class="why">Reproducible dev and production environments</td></tr>
+          <tr><td class="layer">CI/CD</td><td class="tech">GitHub Actions</td><td class="why">Lint → test → build → deploy on every push to main</td></tr>
+          <tr><td class="layer">Cloud</td><td class="tech">AWS ECS Fargate + RDS + S3</td><td class="why">HIPAA-aligned managed infra, auto-scaling, disaster recovery</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 2 -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <span class="section-title">Project Architecture & Folder Structure</span>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">2.1 Module Layout</div>
+      <div class="dir-tree"><span class="dir-folder">mras-v3/</span>
+├── <span class="dir-folder">src/</span>
+│   ├── <span class="dir-folder">api/</span>           <span class="dir-comment"># FastAPI routers (one per module)</span>
+│   │   ├── <span class="dir-file">auth.py</span>
+│   │   ├── <span class="dir-file">patients.py</span>
+│   │   ├── <span class="dir-file">consultations.py</span>
+│   │   ├── <span class="dir-file">inventory.py</span>
+│   │   └── <span class="dir-file">intelligence.py</span>  <span class="dir-comment"># v3 predictions + JRISSI</span>
+│   │
+│   ├── <span class="dir-folder">modules/</span>       <span class="dir-comment"># Domain logic (business rules)</span>
+│   │   ├── <span class="dir-file">auth_service.py</span>
+│   │   ├── <span class="dir-file">patient_service.py</span>
+│   │   ├── <span class="dir-file">jrissi_scorer.py</span>     <span class="dir-comment"># MHRS algorithm</span>
+│   │   ├── <span class="dir-file">health_forecaster.py</span> <span class="dir-comment"># Prophet + sklearn</span>
+│   │   ├── <span class="dir-file">data_fusion.py</span>       <span class="dir-comment"># Merge 3 streams</span>
+│   │   └── <span class="dir-file">notification_engine.py</span>
+│   │
+│   ├── <span class="dir-folder">models/</span>        <span class="dir-comment"># SQLModel table definitions</span>
+│   │   ├── <span class="dir-file">patient.py</span>
+│   │   ├── <span class="dir-file">health_record.py</span>
+│   │   └── <span class="dir-file">sensor_reading.py</span>
+│   │
+│   ├── <span class="dir-folder">schemas/</span>       <span class="dir-comment"># Pydantic request/response types</span>
+│   ├── <span class="dir-folder">core/</span>          <span class="dir-comment"># Settings, DB session, security utils</span>
+│   │   ├── <span class="dir-file">config.py</span>      <span class="dir-comment"># Pydantic BaseSettings from .env</span>
+│   │   ├── <span class="dir-file">database.py</span>
+│   │   └── <span class="dir-file">security.py</span>
+│   │
+│   └── <span class="dir-file">main.py</span>        <span class="dir-comment"># App factory, router registration</span>
+│
+├── <span class="dir-folder">tests/</span>             <span class="dir-comment"># pytest (unit + integration)</span>
+├── <span class="dir-folder">data/</span>              <span class="dir-comment"># Public datasets (UCI, WHO, OSMI)</span>
+├── <span class="dir-folder">alembic/</span>           <span class="dir-comment"># DB migrations</span>
+├── <span class="dir-file">requirements.txt</span>   <span class="dir-comment"># Pinned versions</span>
+├── <span class="dir-file">docker-compose.yml</span>
+└── <span class="dir-file">README.md</span></div>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">2.2 Naming Conventions</div>
+      <div class="rule"><div class="rule-dot green"></div><div class="rule-text"><code>snake_case</code> — all Python files, functions, variables (<code>patient_service.py</code>, <code>compute_mhrs</code>)</div></div>
+      <div class="rule"><div class="rule-dot green"></div><div class="rule-text"><code>PascalCase</code> — class names (<code>HealthForecaster</code>, <code>JRISSIScorer</code>, <code>PatientCreate</code>)</div></div>
+      <div class="rule"><div class="rule-dot green"></div><div class="rule-text"><code>ALL_CAPS</code> — module-level constants (<code>MHRS_HIGH_THRESHOLD = 70</code>, <code>DEFAULT_FORECAST_DAYS = 7</code>)</div></div>
+      <div class="rule"><div class="rule-dot warn"></div><div class="rule-text">Routers are named after the resource they serve: <code>patients.py</code> not <code>patient_routes.py</code></div></div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 3 -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <span class="section-title">FastAPI Patterns</span>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">3.1 Router Structure</div>
+      <div class="compare">
+        <div class="cmp-card">
+          <div class="cmp-label bad-label">— avoid</div>
+          <div class="cmp-code">@app.get("/patients")
+async def get_patients():
+    # all logic in main.py
+    ...</div>
+        </div>
+        <div class="cmp-card">
+          <div class="cmp-label good-label">+ correct</div>
+          <div class="cmp-code">router = APIRouter(
+  prefix="/patients",
+  tags=["patients"]
+)
+
+@router.get("/")
+async def list_patients(
+  db: AsyncSession = Depends(get_db),
+  current_user = Depends(require_role("doctor"))
+): ...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">3.2 Configuration (Settings)</div>
+      <div class="code-label">core/config.py</div>
+<pre class="code"><span class="c-accent">from</span> pydantic_settings <span class="c-accent">import</span> BaseSettings
+
+<span class="c-accent">class</span> <span class="c-green">Settings</span>(BaseSettings):
+    DATABASE_URL: str
+    SECRET_KEY: str
+    ANTHROPIC_API_KEY: str
+    OPENWEATHER_API_KEY: str
+    TWILIO_ACCOUNT_SID: str
+
+    <span class="c-muted"># Feature flags</span>
+    ENABLE_ML_PREDICTIONS: bool = <span class="c-warn">True</span>
+    ENABLE_STREAM2_SENSORS: bool = <span class="c-warn">True</span>
+
+    <span class="c-accent">class</span> Config:
+        env_file = <span class="c-green">".env"</span>
+
+settings = <span class="c-green">Settings</span>()</pre>
+      <div class="rule"><div class="rule-dot red"></div><div class="rule-text">Never hardcode secrets. Never commit <code>.env</code> to Git. Add it to <code>.gitignore</code> on Day 1.</div></div>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">3.3 Dependency Injection Pattern</div>
+<pre class="code"><span class="c-muted"># core/database.py</span>
+<span class="c-accent">async def</span> <span class="c-green">get_db</span>() -> AsyncGenerator[AsyncSession, None]:
+    <span class="c-accent">async with</span> AsyncSessionLocal() <span class="c-accent">as</span> session:
+        <span class="c-accent">yield</span> session
+
+<span class="c-muted"># Usage in any router</span>
+<span class="c-accent">async def</span> <span class="c-green">get_patient</span>(
+    patient_id: int,
+    db: AsyncSession = Depends(get_db),
+    user = Depends(require_role(<span class="c-green">"doctor"</span>))
+):
+    ...</pre>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">3.4 Solving N+1 Query Problem</div>
+      <div class="rule"><div class="rule-dot red"></div><div class="rule-text">Always use <code>selectinload()</code> or <code>joinedload()</code> when fetching related data. A loop calling <code>db.get()</code> per patient <strong>will kill performance</strong>.</div></div>
+<pre class="code"><span class="c-muted"># Bad — N queries</span>
+patients = await db.execute(select(Patient))
+<span class="c-accent">for</span> p <span class="c-accent">in</span> patients:
+    p.consultations  <span class="c-red"># triggers new query each time</span>
+
+<span class="c-muted"># Good — 2 queries total</span>
+stmt = (
+    select(Patient)
+    .options(selectinload(Patient.consultations))
+)
+result = await db.execute(stmt)</pre>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 4 -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <span class="section-title">Database & ORM (SQLModel)</span>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">4.1 Model Definition Pattern</div>
+      <div class="prose">One class serves as both the SQLAlchemy table and Pydantic schema. Separate <code style="font-family:var(--mono);font-size:11px">Create</code> / <code style="font-family:var(--mono);font-size:11px">Read</code> schemas to control what is exposed in API responses.</div>
+<pre class="code"><span class="c-accent">from</span> sqlmodel <span class="c-accent">import</span> SQLModel, Field
+<span class="c-accent">from</span> datetime <span class="c-accent">import</span> datetime
+
+<span class="c-accent">class</span> <span class="c-green">PatientBase</span>(SQLModel):
+    employee_id: str = Field(index=<span class="c-warn">True</span>, unique=<span class="c-warn">True</span>)
+    full_name: str
+    department: str
+    date_of_birth: datetime
+
+<span class="c-accent">class</span> <span class="c-green">Patient</span>(<span class="c-green">PatientBase</span>, table=<span class="c-warn">True</span>):  <span class="c-muted"># DB table</span>
+    id: int | None = Field(default=<span class="c-warn">None</span>, primary_key=<span class="c-warn">True</span>)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+<span class="c-accent">class</span> <span class="c-green">PatientCreate</span>(<span class="c-green">PatientBase</span>): ...    <span class="c-muted"># Request body</span>
+<span class="c-accent">class</span> <span class="c-green">PatientRead</span>(<span class="c-green">PatientBase</span>):           <span class="c-muted"># Response (no secrets)</span>
+    id: int</pre>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">4.2 TimescaleDB for Sensor & Health Data</div>
+      <div class="prose">All time-series data (sensor readings, health check-ins, JRISSI scores) must use TimescaleDB hypertables. Do not store them in standard tables — query performance degrades rapidly at scale.</div>
+<pre class="code"><span class="c-muted"># In Alembic migration (after CREATE TABLE)</span>
+op.execute(<span class="c-green">"""
+    SELECT create_hypertable(
+        'sensor_reading', 'timestamp',
+        if_not_exists => TRUE
+    );
+"""</span>)</pre>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">4.3 Migration Rules</div>
+      <div class="rule"><div class="rule-dot green"></div><div class="rule-text">Every schema change has a migration: <code>alembic revision --autogenerate -m "add_mhrs_column"</code></div></div>
+      <div class="rule"><div class="rule-dot green"></div><div class="rule-text">Always provide a <code>downgrade()</code> function. Rollback capability is non-negotiable.</div></div>
+      <div class="rule"><div class="rule-dot red"></div><div class="rule-text">Never run <code>SQLModel.metadata.create_all()</code> in production. Use Alembic only.</div></div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 5 -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <span class="section-title">Authentication & RBAC</span>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">5.1 Role Definitions</div>
+      <div class="pill-row">
+        <span class="pill blue">employee</span>
+        <span class="pill blue">doctor</span>
+        <span class="pill warn">pharmacy_staff</span>
+        <span class="pill red">admin</span>
+      </div>
+      <div class="rule"><div class="rule-dot red"></div><div class="rule-text"><strong>JRISSI scores</strong> are visible to <code>doctor</code> role only. Never expose to <code>admin</code> or any HR-adjacent role. This is a hard privacy requirement.</div></div>
+      <div class="rule"><div class="rule-dot warn"></div><div class="rule-text">Sensor data collection requires an explicit opt-in flag on the employee record (<code>sensor_consent: bool</code>). A missing or false flag means <strong>no collection</strong>.</div></div>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">5.2 JWT Dependency</div>
+<pre class="code"><span class="c-accent">def</span> <span class="c-green">require_role</span>(*roles: str):
+    <span class="c-accent">async def</span> <span class="c-green">checker</span>(token = Depends(oauth2_scheme)):
+        payload = decode_jwt(token)
+        <span class="c-accent">if</span> payload[<span class="c-green">"role"</span>] <span class="c-accent">not in</span> roles:
+            <span class="c-accent">raise</span> HTTPException(status_code=403)
+        <span class="c-accent">return</span> payload
+    <span class="c-accent">return</span> checker
+
+<span class="c-muted"># Usage</span>
+@router.get(<span class="c-green">"/jrissi/{employee_id}"</span>)
+<span class="c-accent">async def</span> <span class="c-green">get_mhrs</span>(
+    employee_id: int,
+    user = Depends(require_role(<span class="c-green">"doctor"</span>))
+): ...</pre>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 6 -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">06</span>
+      <span class="section-title">ML / AI Layer</span>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">6.1 JRISSI Scorer Pattern</div>
+<pre class="code"><span class="c-muted"># modules/jrissi_scorer.py</span>
+MHRS_HIGH_THRESHOLD = 70
+MHRS_MODERATE_THRESHOLD = 40
+
+<span class="c-accent">class</span> <span class="c-green">JRISSIScorer</span>:
+    <span class="c-accent">def</span> <span class="c-green">compute_mhrs</span>(self, employee_id: int, db) -> <span class="c-green">MHRSResult</span>:
+        jri = self._score_jri(employee_id, db) * 0.30
+        ssi = self._score_ssi(employee_id, db) * 0.25
+        phi = self._score_phi(employee_id, db) * 0.25
+        cps = self._score_cps(employee_id, db) * 0.20
+        mhrs = round(jri + ssi + phi + cps)
+
+        <span class="c-accent">if</span>   mhrs >= MHRS_HIGH_THRESHOLD:     category = <span class="c-green">"High"</span>
+        <span class="c-accent">elif</span> mhrs >= MHRS_MODERATE_THRESHOLD: category = <span class="c-green">"Moderate"</span>
+        <span class="c-accent">else</span>:                                  category = <span class="c-green">"Low"</span>
+
+        <span class="c-accent">return</span> <span class="c-green">MHRSResult</span>(score=mhrs, category=category)</pre>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">6.2 Claude API — Behaviour Correction Text</div>
+<pre class="code"><span class="c-accent">import</span> anthropic
+
+<span class="c-accent">async def</span> <span class="c-green">generate_correction</span>(risk: str, profile: <span class="c-green">EmployeeProfile</span>) -> str:
+    client = anthropic.AsyncAnthropic()
+    message = <span class="c-accent">await</span> client.messages.create(
+        model=<span class="c-green">"claude-sonnet-4-6"</span>,
+        max_tokens=256,
+        system=<span class="c-green">"You are a corporate health advisor. Write one short, "</span>
+               <span class="c-green">"actionable health recommendation (2–3 sentences). "</span>
+               <span class="c-green">"Never diagnose. Always recommend doctor follow-up."</span>,
+        messages=[{<span class="c-green">"role"</span>: <span class="c-green">"user"</span>,
+                   <span class="c-green">"content"</span>: f<span class="c-green">"Risk: {risk}. Profile: {profile.summary()}"</span>}]
+    )
+    raw = message.content[0].text
+    <span class="c-accent">return</span> SafetyFilter.validate(raw)  <span class="c-muted"># Always filter before sending</span></pre>
+      <div class="rule"><div class="rule-dot red"></div><div class="rule-text"><strong>All LLM output passes through SafetyFilter before any delivery.</strong> The filter checks for: diagnostic language, medication dosage claims, and links/URLs.</div></div>
+      <div class="rule"><div class="rule-dot warn"></div><div class="rule-text">Every generated message displays a disclaimer: <em>"This is an advisory suggestion. Consult your doctor before making health decisions."</em></div></div>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">6.3 Climate API Fallback Chain</div>
+<pre class="code"><span class="c-accent">async def</span> <span class="c-green">get_climate_data</span>(lat: float, lon: float) -> <span class="c-green">ClimateReading</span>:
+    <span class="c-accent">try</span>:
+        <span class="c-accent">return await</span> openweathermap_client.fetch(lat, lon)
+    <span class="c-accent">except</span> (TimeoutError, APIError):
+        logger.warning(<span class="c-green">"OpenWeather failed — trying Tomorrow.io"</span>)
+        <span class="c-accent">try</span>:
+            <span class="c-accent">return await</span> tomorrowio_client.fetch(lat, lon)
+        <span class="c-accent">except</span> (TimeoutError, APIError):
+            logger.error(<span class="c-green">"Both climate APIs failed — skipping forecast"</span>)
+            <span class="c-accent">return None</span>  <span class="c-muted"># Caller must handle None gracefully</span></pre>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 7 -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">07</span>
+      <span class="section-title">Background Tasks & Scheduling</span>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">7.1 APScheduler Jobs</div>
+      <table class="stack-table">
+        <thead><tr><th>Job</th><th>Schedule</th><th>Module</th></tr></thead>
+        <tbody>
+          <tr><td class="layer">Nightly prediction batch</td><td class="tech">02:00 daily</td><td class="why"><code style="font-family:var(--mono);font-size:11px">health_forecaster.run_batch()</code></td></tr>
+          <tr><td class="layer">Climate data pull</td><td class="tech">Every 6 hrs</td><td class="why"><code style="font-family:var(--mono);font-size:11px">data_fusion.fetch_stream3()</code></td></tr>
+          <tr><td class="layer">Escalation monitor</td><td class="tech">Every 1 hr</td><td class="why"><code style="font-family:var(--mono);font-size:11px">notification_engine.check_escalations()</code></td></tr>
+          <tr><td class="layer">Medication reminders</td><td class="tech">08:00 daily</td><td class="why"><code style="font-family:var(--mono);font-size:11px">notification_engine.send_reminders()</code></td></tr>
+          <tr><td class="layer">FEFO expiry alert</td><td class="tech">07:00 daily</td><td class="why"><code style="font-family:var(--mono);font-size:11px">inventory_service.check_expiry()</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">7.2 Inline Background Tasks (FastAPI)</div>
+      <div class="prose">Use <code style="font-family:var(--mono);font-size:11px">BackgroundTasks</code> for fast fire-and-forget work triggered by user actions (e.g., push doctor briefing on QR scan). Do not use for heavy ML jobs — use APScheduler for those.</div>
+<pre class="code">@router.post(<span class="c-green">"/checkin/{employee_id}"</span>)
+<span class="c-accent">async def</span> <span class="c-green">check_in</span>(employee_id: int, bg: BackgroundTasks):
+    bg.add_task(push_doctor_briefing, employee_id)
+    <span class="c-accent">return</span> {<span class="c-green">"status"</span>: <span class="c-green">"checked_in"</span>}</pre>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 8 -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">08</span>
+      <span class="section-title">Security & Privacy</span>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">8.1 Non-negotiable Rules</div>
+      <div class="rule"><div class="rule-dot red"></div><div class="rule-text"><strong>AES-256</strong> encryption at rest for all PHI fields (diagnoses, medications, MHRS scores).</div></div>
+      <div class="rule"><div class="rule-dot red"></div><div class="rule-text"><strong>TLS 1.3</strong> in transit for all API communication. No HTTP in production.</div></div>
+      <div class="rule"><div class="rule-dot red"></div><div class="rule-text">SQL injection prevention: <strong>never use string formatting in queries</strong>. Use SQLAlchemy parameterised statements only.</div></div>
+      <div class="rule"><div class="rule-dot red"></div><div class="rule-text">Rate limiting on auth endpoints: max 5 failed login attempts per IP per 15 minutes.</div></div>
+      <div class="rule"><div class="rule-dot warn"></div><div class="rule-text">All external links in API responses use <code>rel="noopener noreferrer"</code>.</div></div>
+      <div class="rule"><div class="rule-dot warn"></div><div class="rule-text">Rotate <code>SECRET_KEY</code> and API keys every 90 days. Store in AWS Secrets Manager, not in .env on the server.</div></div>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">8.2 CORS Configuration</div>
+<pre class="code">app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[settings.FRONTEND_URL],  <span class="c-muted"># Never use ["*"]</span>
+    allow_credentials=<span class="c-warn">True</span>,
+    allow_methods=[<span class="c-green">"GET"</span>, <span class="c-green">"POST"</span>, <span class="c-green">"PUT"</span>, <span class="c-green">"DELETE"</span>],
+    allow_headers=[<span class="c-green">"Authorization"</span>, <span class="c-green">"Content-Type"</span>],
+)</pre>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 9 -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">09</span>
+      <span class="section-title">Testing Strategy</span>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">9.1 Pyramid Layers</div>
+      <table class="stack-table">
+        <thead><tr><th>Layer</th><th>Tool</th><th>What to test</th></tr></thead>
+        <tbody>
+          <tr><td class="layer">Static Analysis</td><td class="tech">ruff + mypy</td><td class="why">Runs on every commit (pre-commit hook). Blocks bad code from entering repo.</td></tr>
+          <tr><td class="layer">Unit Tests</td><td class="tech">pytest</td><td class="why">JRISSI score boundary values (0, 39, 40, 69, 70, 100), FEFO sort order, forecast feature engineering</td></tr>
+          <tr><td class="layer">Integration Tests</td><td class="tech">pytest + httpx</td><td class="why">Check-in → briefing push flow; full prediction pipeline end-to-end; escalation trigger at day 14</td></tr>
+          <tr><td class="layer">E2E Tests</td><td class="tech">Playwright</td><td class="why">Doctor dashboard load after QR scan; employee receives WhatsApp notification; role-access blocks</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">9.2 Async Test Setup</div>
+<pre class="code"><span class="c-muted"># conftest.py</span>
+@pytest.fixture
+<span class="c-accent">async def</span> <span class="c-green">async_client</span>():
+    <span class="c-accent">async with</span> AsyncClient(
+        app=app, base_url=<span class="c-green">"http://test"</span>
+    ) <span class="c-accent">as</span> client:
+        <span class="c-accent">yield</span> client
+
+<span class="c-muted"># Test file</span>
+@pytest.mark.asyncio
+<span class="c-accent">async def</span> <span class="c-green">test_jrissi_high_threshold</span>(async_client):
+    response = <span class="c-accent">await</span> async_client.get(<span class="c-green">"/jrissi/1"</span>)
+    <span class="c-accent">assert</span> response.json()[<span class="c-green">"category"</span>] == <span class="c-green">"High"</span></pre>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- SECTION 10 -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">10</span>
+      <span class="section-title">Pre-Launch Checklist</span>
+    </div>
+
+    <div class="sub">
+      <div class="sub-title">Run before merging to main</div>
+      <ul class="checklist">
+        <li class="cat" style="border:none">Code Quality</li>
+        <li><div class="check-box"></div>ruff check passes with zero errors</li>
+        <li><div class="check-box"></div>mypy type-check passes (strict mode)</li>
+        <li><div class="check-box"></div>pytest —all green; coverage &gt; 80%</li>
+        <li><div class="check-box"></div>docker compose build succeeds locally</li>
+        <li class="cat" style="border:none">Security</li>
+        <li><div class="check-box"></div>.env is in .gitignore — confirmed not committed</li>
+        <li><div class="check-box"></div>No hardcoded secrets or API keys in source</li>
+        <li><div class="check-box"></div>CORS allow_origins does not contain "*"</li>
+        <li><div class="check-box"></div>All PHI fields are AES-256 encrypted</li>
+        <li><div class="check-box"></div>JRISSI endpoint: confirmed blocked for non-doctor roles</li>
+        <li class="cat" style="border:none">Privacy</li>
+        <li><div class="check-box"></div>Sensor data collection only for employees where sensor_consent = true</li>
+        <li><div class="check-box"></div>LLM output passes SafetyFilter before dispatch</li>
+        <li><div class="check-box"></div>Advisory disclaimer present on all AI-generated messages</li>
+        <li class="cat" style="border:none">Reliability</li>
+        <li><div class="check-box"></div>Climate API fallback tested (both OpenWeather and Tomorrow.io down)</li>
+        <li><div class="check-box"></div>System functions fully without Stream 2 (sensor) data</li>
+        <li><div class="check-box"></div>All APScheduler jobs tested with mock data</li>
+        <li class="cat" style="border:none">Deployment</li>
+        <li><div class="check-box"></div>All env vars set in AWS Secrets Manager / ECS task definition</li>
+        <li><div class="check-box"></div>Alembic migrations ran successfully on production DB</li>
+        <li><div class="check-box"></div>TimescaleDB hypertables created for all time-series tables</li>
+        <li><div class="check-box"></div>README.md updated with live deployment URL</li>
+      </ul>
+    </div>
+  </div>
+
+</div>

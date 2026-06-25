@@ -1,0 +1,34 @@
+<!doctype html>
+<!-- @dsCard group="Brand" name="Semantic colors" subtitle="Success · Warning · Danger · Info" viewport="700x180" -->
+<html><head><meta charset="utf-8"><title>Colors — Semantic</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 16px; background: var(--surface-1); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .item { border: 1px solid var(--border-1); border-radius: 10px; overflow: hidden; }
+  .item .bar { height: 56px; }
+  .item .meta { padding: 10px 12px; }
+  .item .role { font: 600 13px var(--font-sans); color: var(--fg-1); text-transform: capitalize; }
+  .item .hex { font: 500 11px var(--font-mono); color: var(--fg-3); margin-top: 2px; }
+  .item .usage { font: 400 11px var(--font-sans); color: var(--fg-3); margin-top: 6px; line-height: 1.3; }
+</style></head>
+<body>
+  <div class="grid">
+    <div class="item">
+      <div class="bar" style="background:var(--success)"></div>
+      <div class="meta"><div class="role">Success</div><div class="hex">#10B981</div><div class="usage">Healthy ranges, saved confirmations</div></div>
+    </div>
+    <div class="item">
+      <div class="bar" style="background:var(--warning)"></div>
+      <div class="meta"><div class="role">Warning</div><div class="hex">#F59E0B</div><div class="usage">Forecast watch, moderate risk</div></div>
+    </div>
+    <div class="item">
+      <div class="bar" style="background:var(--danger)"></div>
+      <div class="meta"><div class="role">Danger</div><div class="hex">#EF4444</div><div class="usage">Escalation, high risk only</div></div>
+    </div>
+    <div class="item">
+      <div class="bar" style="background:var(--info)"></div>
+      <div class="meta"><div class="role">Info</div><div class="hex">#3B82F6</div><div class="usage">Neutral notices, employee tag</div></div>
+    </div>
+  </div>
+</body></html>

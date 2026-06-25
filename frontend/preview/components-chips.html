@@ -1,0 +1,36 @@
+<!doctype html>
+<!-- @dsCard group="Brand" name="Status chips" subtitle="JRISSI · inventory · misc" viewport="700x180" -->
+<html><head><meta charset="utf-8"><title>Status chips</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 20px; background: var(--surface-1); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; align-items: center; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; font: 500 12px var(--font-sans); padding: 4px 10px; border-radius: var(--radius-pill); border: 1px solid transparent; }
+  .chip .dot { width: 6px; height: 6px; border-radius: 999px; }
+  .chip.low  { background: var(--risk-low-bg); color: var(--success-fg); }
+  .chip.low .dot { background: var(--risk-low); }
+  .chip.mod  { background: var(--risk-moderate-bg); color: var(--warning-fg); }
+  .chip.mod .dot { background: var(--risk-moderate); }
+  .chip.high { background: var(--risk-high-bg); color: var(--danger-fg); }
+  .chip.high .dot { background: var(--risk-high); }
+  .chip.info { background: var(--info-bg); color: var(--info-fg); }
+  .chip.neutral { background: var(--slate-100); color: var(--fg-2); }
+  .label { font: 600 11px var(--font-sans); color: var(--fg-3); letter-spacing: .06em; text-transform: uppercase; width: 100px; }
+</style></head>
+<body>
+  <div class="row"><span class="label">JRISSI</span>
+    <span class="chip low"><span class="dot"></span>Low · 22</span>
+    <span class="chip mod"><span class="dot"></span>Moderate · 48</span>
+    <span class="chip high"><span class="dot"></span>High · 78</span>
+  </div>
+  <div class="row"><span class="label">Inventory</span>
+    <span class="chip low"><span class="ms is-20" style="font-size:14px">check_circle</span>In stock</span>
+    <span class="chip mod"><span class="ms is-20" style="font-size:14px">schedule</span>Expiring 30 d</span>
+    <span class="chip high"><span class="ms is-20" style="font-size:14px">block</span>Expired</span>
+  </div>
+  <div class="row"><span class="label">Status</span>
+    <span class="chip info">Pre-visit briefing ready</span>
+    <span class="chip neutral">Draft</span>
+    <span class="chip low">Saved</span>
+  </div>
+</body></html>

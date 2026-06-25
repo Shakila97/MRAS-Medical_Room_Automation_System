@@ -1,0 +1,22 @@
+<!doctype html>
+<!-- @dsCard group="Brand" name="Role accents" subtitle="Doctor · Employee · Pharmacy · Admin" viewport="700x120" -->
+<html><head><meta charset="utf-8"><title>Role accents</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 16px; background: var(--surface-1); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .chip { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 10px; background: var(--bg-canvas); border: 1px solid var(--border-1); }
+  .dot  { width: 12px; height: 12px; border-radius: 999px; flex: 0 0 auto; }
+  .name { font: 600 13px var(--font-sans); color: var(--fg-1); text-transform: capitalize; }
+  .hex  { font: 500 11px var(--font-mono); color: var(--fg-3); margin-top: 2px; }
+  .head { font: 600 12px var(--font-sans); color: var(--fg-3); letter-spacing: .06em; text-transform: uppercase; margin: 0 0 10px; }
+</style></head>
+<body>
+  <p class="head">Role accents</p>
+  <div class="grid">
+    <div class="chip"><div class="dot" style="background:var(--role-doctor)"></div><div><div class="name">Doctor</div><div class="hex">#0F766E</div></div></div>
+    <div class="chip"><div class="dot" style="background:var(--role-employee)"></div><div><div class="name">Employee</div><div class="hex">#3B82F6</div></div></div>
+    <div class="chip"><div class="dot" style="background:var(--role-pharmacy)"></div><div><div class="name">Pharmacy</div><div class="hex">#7C3AED</div></div></div>
+    <div class="chip"><div class="dot" style="background:var(--role-admin)"></div><div><div class="name">Admin</div><div class="hex">#334155</div></div></div>
+  </div>
+</body></html>

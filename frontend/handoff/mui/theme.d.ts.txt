@@ -1,0 +1,32 @@
+// MRAS theme — TypeScript module augmentation
+// Drop into src/theme/theme.d.ts so TS knows about the `theme.mras` extension.
+
+import '@mui/material/styles';
+
+declare module '@mui/material/styles' {
+  interface Theme {
+    mras: {
+      risk: {
+        low:      { main: string; bg: string; fg: string };
+        moderate: { main: string; bg: string; fg: string };
+        high:     { main: string; bg: string; fg: string };
+      };
+      role: {
+        doctor:   string;
+        employee: string;
+        pharmacy: string;
+        admin:    string;
+      };
+      layout: {
+        appbarHeight:    number;
+        sidebarWidth:    number;
+        sidebarCollapsed: number;
+        contentMaxWidth: number;
+      };
+    };
+  }
+
+  interface ThemeOptions {
+    mras?: Theme['mras'];
+  }
+}
