@@ -1,7 +1,8 @@
-/* eslint-disable */
-// Employee check-in / personal health view
-
-function EmployeeHome({ onCheckIn }) {
+﻿/* eslint-disable */
+import React from 'react';
+import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
+import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
+export function EmployeeHome({ onCheckIn }) {
   const [checkedIn, setCheckedIn] = React.useState(false);
 
   return (
@@ -118,4 +119,4 @@ function EmployeeHome({ onCheckIn }) {
   );
 }
 
-Object.assign(window, { EmployeeHome });
+

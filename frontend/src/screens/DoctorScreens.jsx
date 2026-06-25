@@ -1,11 +1,13 @@
-/* eslint-disable */
-// Doctor-facing screens: SOAP consultation editor, Prescription writer,
+﻿/* eslint-disable */
+import React from 'react';
+import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
+import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
 // JRISSI deep-dive panel, Predictive forecasting view.
 
 // ============================================================================
 // 1. SOAP CONSULTATION EDITOR
 // ============================================================================
-function SoapEditor() {
+export function SoapEditor() {
   const [tab, setTab] = React.useState('s');
   const [s, setS] = React.useState('Patient reports recurrent morning headaches over the past 10 days, worse after long meeting blocks. Mild congestion. Denies fever or photophobia. Sleep self-reported 5–6 h.');
   const [o, setO] = React.useState('BP 128/84 mmHg · HR 76 bpm · Temp 36.7 °C · SpO₂ 97% · BMI 24.1. No nasal discharge. Mild scleral injection. Chest clear.');
@@ -125,7 +127,7 @@ function SoapEditor() {
 // ============================================================================
 // 2. PRESCRIPTION WRITER
 // ============================================================================
-function PrescriptionWriter() {
+export function PrescriptionWriter() {
   const rx = [
     { name: 'Cetirizine', brand: 'Zyrtec', strength: '10 mg', form: 'tab', dose: '1 tab OD', dur: '7 days', stock: 124, interactions: 0 },
     { name: 'Paracetamol', brand: 'Panadol', strength: '500 mg', form: 'tab', dose: '1–2 tab QDS PRN', dur: '5 days', stock: 312, interactions: 0 },
@@ -232,7 +234,7 @@ function PrescriptionWriter() {
 // ============================================================================
 // 3. JRISSI DEEP-DIVE
 // ============================================================================
-function JrissiDeepDive() {
+export function JrissiDeepDive() {
   const trend = [38, 42, 51, 49, 55, 58, 62, 60, 64, 68, 71, 73, 76, 78];
   const days = ['1', '', '3', '', '5', '', '7', '', '9', '', '11', '', '13', '14'];
   const subscores = [
@@ -371,7 +373,7 @@ function Stat({ label, value, tone }) {
 // ============================================================================
 // 4. PREDICTIVE FORECASTING
 // ============================================================================
-function ForecastingView() {
+export function ForecastingView() {
   const pollen = [22, 30, 28, 35, 48, 62, 78, 71, 64, 52, 41, 38, 32, 28];
   const heat   = [28, 29, 30, 29, 31, 33, 35, 36, 34, 32, 31, 30, 29, 28];
   const dayLbls = ['Mon', '', 'Wed', '', 'Fri', '', 'Sun', '', 'Tue', '', 'Thu', '', 'Sat', ''];
@@ -445,7 +447,7 @@ function ForecastingView() {
 // ============================================================================
 // 5. JRISSI / AI — workforce mental-health scores + AI predictions (/ai)
 // ============================================================================
-function JrissiAiOverview({ onOpenPatient }) {
+export function JrissiAiOverview({ onOpenPatient }) {
   const dist = [
     { d: 'Mon', l: 64, m: 24, h: 12 }, { d: 'Tue', l: 62, m: 26, h: 12 },
     { d: 'Wed', l: 60, m: 27, h: 13 }, { d: 'Thu', l: 61, m: 25, h: 14 },
@@ -652,4 +654,4 @@ function JrissiAiOverview({ onOpenPatient }) {
   );
 }
 
-Object.assign(window, { SoapEditor, PrescriptionWriter, JrissiDeepDive, ForecastingView, JrissiAiOverview });
+

@@ -1,10 +1,11 @@
-/* eslint-disable */
-// Employee-facing screens: wellness home (timeline), appointment / QR check-in.
-
+﻿/* eslint-disable */
+import React from 'react';
+import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
+import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
 // ============================================================================
 // 1. WELLNESS HOME (timeline + your health)
 // ============================================================================
-function EmployeeWellness() {
+export function EmployeeWellness() {
   const week = [62, 68, 71, 64, 75, 70, 73];
   const weekLbls = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   return (
@@ -121,7 +122,7 @@ function EmployeeWellness() {
 // ============================================================================
 // 2. APPOINTMENT SCHEDULING + QR CHECK-IN
 // ============================================================================
-function AppointmentScheduling() {
+export function AppointmentScheduling() {
   const [date, setDate] = React.useState('2026-05-19');
   const [slot, setSlot] = React.useState('10:00');
   return (
@@ -207,7 +208,7 @@ function AppointmentScheduling() {
   );
 }
 
-function QrPlaceholder({ size = 140 }) {
+export function QrPlaceholder({ size = 140 }) {
   // Minimal QR-ish svg for placeholder rendering
   const grid = 17;
   const cells = [];
@@ -238,7 +239,7 @@ function QrPlaceholder({ size = 140 }) {
 // ============================================================================
 // 3. KIOSK CHECK-IN (compact / large display)
 // ============================================================================
-function KioskCheckIn() {
+export function KioskCheckIn() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 48, gap: 24, minHeight: 600, background: 'linear-gradient(160deg, var(--teal-800) 0%, var(--teal-900) 100%)', borderRadius: 12 }}>
       <img src={(window.__resources&&window.__resources.mrasWordmark)||"assets/mras-wordmark.svg"} alt="MRAS" style={{ height: 40, filter: 'brightness(0) invert(1)', opacity: 0.92 }} />
@@ -259,4 +260,4 @@ function KioskCheckIn() {
   );
 }
 
-Object.assign(window, { EmployeeWellness, AppointmentScheduling, KioskCheckIn, QrPlaceholder });
+

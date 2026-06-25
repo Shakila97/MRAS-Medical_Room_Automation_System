@@ -1,7 +1,8 @@
-/* eslint-disable */
-// Doctor dashboard — queue, JRISSI watchlist, forecasts
-
-const PATIENTS = [
+﻿/* eslint-disable */
+import React from 'react';
+import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
+import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
+export const PATIENTS = [
   { id: 'E-002417', name: 'A. Perera',     dept: 'Engineering', jrissi: 78, jr_delta: '+12', last: '2 d ago', flags: ['JRISSI High', 'Asthma'] },
   { id: 'E-002104', name: 'S. Fernando',   dept: 'HR',          jrissi: 52, jr_delta: '+6',  last: '5 d ago', flags: ['Allergy watch'] },
   { id: 'E-001998', name: 'D. Anuradha',   dept: 'Engineering', jrissi: 31, jr_delta: '-3',  last: '1 d ago', flags: [] },
@@ -9,7 +10,7 @@ const PATIENTS = [
   { id: 'E-001705', name: 'K. Silva',      dept: 'Finance',     jrissi: 19, jr_delta: '-1',  last: 'today',   flags: [] },
 ];
 
-function DoctorDashboard({ onOpenPatient }) {
+export function DoctorDashboard({ onOpenPatient }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16 }}>
@@ -148,4 +149,4 @@ function DoctorDashboard({ onOpenPatient }) {
   );
 }
 
-Object.assign(window, { DoctorDashboard, PATIENTS });
+

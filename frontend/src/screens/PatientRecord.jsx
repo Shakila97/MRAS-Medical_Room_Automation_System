@@ -1,7 +1,8 @@
-/* eslint-disable */
-// Patient record — vitals, JRISSI panel, trends, consultations
-
-function PatientRecord({ patientId, onBack }) {
+﻿/* eslint-disable */
+import React from 'react';
+import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
+import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
+export function PatientRecord({ patientId, onBack }) {
   const p = (window.PATIENTS || []).find(x => x.id === patientId) || {
     id: patientId || 'E-002417', name: 'A. Perera', dept: 'Engineering',
     jrissi: 78, jr_delta: '+12', last: '2 d ago',
@@ -193,4 +194,4 @@ function PatientRecord({ patientId, onBack }) {
   );
 }
 
-Object.assign(window, { PatientRecord });
+

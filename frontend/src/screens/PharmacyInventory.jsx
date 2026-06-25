@@ -1,6 +1,7 @@
-/* eslint-disable */
-// Pharmacy inventory — FEFO stock list, expiry alerts
-
+﻿/* eslint-disable */
+import React from 'react';
+import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
+import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
 const STOCK = [
   { name: 'Paracetamol 500 mg',  brand: 'Panadol',      sku: 'DRG-0421', qty: 1240, unit: 'tab', expiry: '12 Aug 2026', batch: 'P-2026-08-A', tone: 'low' },
   { name: 'Cetirizine 10 mg',    brand: 'Zyrtec',       sku: 'DRG-0118', qty: 312,  unit: 'tab', expiry: '03 Jun 2026', batch: 'C-2026-06-B', tone: 'moderate' },
@@ -12,7 +13,7 @@ const STOCK = [
   { name: 'Loratadine 10 mg',    brand: 'Claritin',     sku: 'DRG-0122', qty: 96,   unit: 'tab', expiry: '08 Sep 2026', batch: 'L-2026-09-A', tone: 'low' },
 ];
 
-function PharmacyInventory() {
+export function PharmacyInventory() {
   const [filter, setFilter] = React.useState('all');
   const filtered = STOCK.filter(s => filter === 'all' ? true : s.tone === filter);
 
@@ -113,4 +114,4 @@ function PharmacyInventory() {
   );
 }
 
-Object.assign(window, { PharmacyInventory });
+

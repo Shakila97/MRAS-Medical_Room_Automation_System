@@ -1,10 +1,11 @@
-/* eslint-disable */
-// Admin screens: Users & roles, Audit log, Reports & analytics.
-
+﻿/* eslint-disable */
+import React from 'react';
+import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
+import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
 // ============================================================================
 // 1. USERS & ROLES
 // ============================================================================
-function AdminUsers() {
+export function AdminUsers() {
   const users = [
     { name: 'Dr. P. Withana',     email: 'p.withana@corp.lk',      role: 'Doctor',     status: 'Active', last: '2 min ago', perms: ['JRISSI', 'Rx sign', 'Patient records'] },
     { name: 'L. Koralage',        email: 'l.koralage@corp.lk',     role: 'Pharmacy',   status: 'Active', last: '14 min',    perms: ['Inventory', 'GRN'] },
@@ -111,7 +112,7 @@ const tdAdm = { padding: '12px 16px', borderBottom: '1px solid var(--border-1)',
 // ============================================================================
 // 2. AUDIT LOG
 // ============================================================================
-function AuditLog() {
+export function AuditLog() {
   const entries = [
     { t: '14 May · 09:34:12', actor: 'Dr. P. Withana', action: 'prescription.sign', tgt: 'rx_20260514_0042', ip: '10.42.1.18', ok: true },
     { t: '14 May · 09:33:51', actor: 'Dr. P. Withana', action: 'consultation.save', tgt: 'cn_20260514_0028', ip: '10.42.1.18', ok: true },
@@ -170,7 +171,7 @@ function AuditLog() {
 // ============================================================================
 // 3. REPORTS & ANALYTICS
 // ============================================================================
-function ReportsAnalytics() {
+export function ReportsAnalytics() {
   const consultByMonth = [82, 91, 88, 102, 119, 124, 138, 142];
   const monthLbls = ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May'];
   const topConditions = [
@@ -292,4 +293,4 @@ function ReportsAnalytics() {
   );
 }
 
-Object.assign(window, { AdminUsers, AuditLog, ReportsAnalytics });
+

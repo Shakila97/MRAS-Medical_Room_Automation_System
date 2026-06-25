@@ -1,10 +1,11 @@
 /* eslint-disable */
-// Shared screens: Notifications center (escalation timeline), Settings & profile.
-
+import React from 'react';
+import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
+import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
 // ============================================================================
 // 1. NOTIFICATIONS CENTER (Closed-loop, with escalation timeline)
 // ============================================================================
-function NotificationsCenter() {
+export function NotificationsCenter() {
   const [filter, setFilter] = React.useState('all');
   const groups = [
     {
@@ -112,7 +113,7 @@ function NotificationsCenter() {
 // ============================================================================
 // 2. SETTINGS & PROFILE
 // ============================================================================
-function SettingsProfile({ initialTab }) {
+export function SettingsProfile({ initialTab }) {
   const [tab, setTab] = React.useState(initialTab || 'profile');
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -217,7 +218,7 @@ function SettingsProfile({ initialTab }) {
 }
 
 // ----------------------------------------------------------------- Security
-function SettingsSecurity() {
+export function SettingsSecurity() {
   return (
     <>
       <Card>
@@ -281,7 +282,7 @@ function SettingsSecurity() {
 }
 
 // ----------------------------------------------------------------- Notifications
-function SettingsNotifications() {
+export function SettingsNotifications() {
   const channels = ['In-app', 'Email', 'SMS', 'Push'];
   const rows = [
     { t: 'JRISSI escalation', s: 'Always on for doctors', on: [true, true, true, true], locked: true },
@@ -326,7 +327,7 @@ function SettingsNotifications() {
 }
 
 // ----------------------------------------------------------------- Privacy & PHI
-function SettingsPrivacy() {
+export function SettingsPrivacy() {
   return (
     <>
       <Banner tone="info" title="Your data is encrypted at rest and in transit.">
@@ -376,7 +377,7 @@ function SettingsPrivacy() {
 }
 
 // ----------------------------------------------------------------- Integrations
-function SettingsIntegrations() {
+export function SettingsIntegrations() {
   const apps = [
     { i: 'event', name: 'Google Calendar', d: 'Sync appointments to your work calendar', on: true },
     { i: 'event_note', name: 'Outlook Calendar', d: 'Sync appointments + reminders', on: false },
@@ -416,7 +417,7 @@ function SettingsIntegrations() {
 }
 
 // ----------------------------------------------------------------- Preferences
-function SettingsPreferences() {
+export function SettingsPreferences() {
   const [theme, setTheme] = React.useState('system');
   const [density, setDensity] = React.useState('comfortable');
   return (
@@ -517,8 +518,5 @@ function SettingsPreferences() {
   );
 }
 
-Object.assign(window, {
-  NotificationsCenter, SettingsProfile,
-  SettingsScreenWith: ({ tab }) => <SettingsProfile initialTab={tab} />,
-  SettingsSecurity, SettingsNotifications, SettingsPrivacy, SettingsIntegrations, SettingsPreferences,
-});
+export const SettingsScreenWith = ({ tab }) => <SettingsProfile initialTab={tab} />;
+

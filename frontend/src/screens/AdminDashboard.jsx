@@ -1,7 +1,8 @@
-/* eslint-disable */
-// Admin dashboard — system health, users, audit log, no PHI / no JRISSI
-
-function AdminDashboard() {
+﻿/* eslint-disable */
+import React from 'react';
+import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
+import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
+export function AdminDashboard() {
   const users = [
     { name: 'Dr. W.I.L. Withana',    role: 'Doctor',   dept: 'Clinical',     status: 'active', last: '2 min',  accent: 'var(--role-doctor)' },
     { name: 'Dr. C. Jeewan',          role: 'Doctor',   dept: 'Clinical',     status: 'active', last: '14 min', accent: 'var(--role-doctor)' },
@@ -206,4 +207,4 @@ function AdminDashboard() {
   );
 }
 
-Object.assign(window, { AdminDashboard });
+

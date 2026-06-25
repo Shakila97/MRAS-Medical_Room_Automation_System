@@ -1,10 +1,11 @@
-/* eslint-disable */
-// Auth screens — Login & Register. Both work in light & dark mode.
-
+﻿/* eslint-disable */
+import React from 'react';
+import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
+import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
 // ============================================================================
 // LOGIN
 // ============================================================================
-function MrasLogin() {
+export function MrasLogin() {
   const [email, setEmail] = React.useState('p.withana@corp.lk');
   const [password, setPassword] = React.useState('');
   const [remember, setRemember] = React.useState(true);
@@ -99,7 +100,7 @@ function MrasLogin() {
 // ============================================================================
 // SIGN UP (create account)
 // ============================================================================
-function MrasSignUp() {
+export function MrasSignUp() {
   const [first, setFirst] = React.useState('');
   const [last, setLast] = React.useState('');
   const [email, setEmail] = React.useState('');
@@ -250,7 +251,7 @@ function MrasSignUp() {
 // ============================================================================
 // REGISTER (first-run onboarding for a new employee)
 // ============================================================================
-function MrasRegister() {
+export function MrasRegister() {
   const [step, setStep] = React.useState(1);
   const [first, setFirst] = React.useState('Bandara');
   const [last, setLast] = React.useState('Karunaratne');
@@ -380,4 +381,4 @@ function MrasRegister() {
   );
 }
 
-Object.assign(window, { MrasLogin, MrasSignUp, MrasRegister });
+

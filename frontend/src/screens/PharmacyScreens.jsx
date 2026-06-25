@@ -1,7 +1,8 @@
-/* eslint-disable */
-// Pharmacy screens: GRN (Goods Received Note) receiving flow with FEFO sequencing.
-
-function GrnReceive() {
+﻿/* eslint-disable */
+import React from 'react';
+import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
+import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
+export function GrnReceive() {
   const [step, setStep] = React.useState(2); // currently at "Lot details"
   const lots = [
     { id: 'LOT-A8821', drug: 'Cetirizine 10 mg', mfg: 'Hemas', qty: 200, expiry: '2027-09', dispOrder: 1, dispLabel: 'Dispense first', tone: 'warning' },
@@ -122,7 +123,7 @@ function Row({ label, value, tone }) {
 // ============================================================================
 // FEFO Expiry watch screen
 // ============================================================================
-function ExpiryWatch() {
+export function ExpiryWatch() {
   const items = [
     { drug: 'Amoxicillin 250 mg', lot: 'LOT-C2207', qty: 6, days: 12, exp: '2026-05-26', tone: 'danger' },
     { drug: 'Ibuprofen 400 mg', lot: 'LOT-D1108', qty: 22, days: 28, exp: '2026-06-11', tone: 'danger' },
@@ -204,4 +205,4 @@ function ExpiryWatch() {
   );
 }
 
-Object.assign(window, { GrnReceive, ExpiryWatch });
+

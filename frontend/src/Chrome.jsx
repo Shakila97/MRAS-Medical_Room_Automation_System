@@ -1,7 +1,9 @@
 /* eslint-disable */
 // MRAS Dashboard chrome — app bar, sidebar, role switcher
+import React from 'react';
+import { Icon, Avatar } from './widgets.jsx';
 
-const NAV_BY_ROLE = {
+export const NAV_BY_ROLE = {
   doctor: [
     { id: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
     { id: 'patients',  icon: 'groups',    label: 'Patients' },
@@ -33,14 +35,14 @@ const NAV_BY_ROLE = {
   ],
 };
 
-const ROLE_META = {
+export const ROLE_META = {
   doctor:   { name: 'Dr. Withana',         accent: 'var(--role-doctor)',   sub: 'Lead clinician' },
   employee: { name: 'B.W.S.S. Nawarathna', accent: 'var(--role-employee)', sub: 'Engineering · SIS/24/B2/39' },
   pharmacy: { name: 'L. Koralage',         accent: 'var(--role-pharmacy)', sub: 'Pharmacy staff' },
   admin:    { name: 'D. Anuradha',         accent: 'var(--role-admin)',    sub: 'System administrator' },
 };
 
-function AppBar({ role, onRoleChange, onMenu }) {
+export function AppBar({ role, onRoleChange, onMenu }) {
   const meta = ROLE_META[role];
   return (
     <div style={{
@@ -60,7 +62,7 @@ function AppBar({ role, onRoleChange, onMenu }) {
       }}>
         <Icon name="menu" size={20} />
       </button>
-      <img src={(window.__resources&&window.__resources.mrasWordmark)||"assets/mras-wordmark.svg"} alt="MRAS" style={{ height: 28 }} />
+      <img src="/assets/mras-wordmark.svg" alt="MRAS" style={{ height: 28 }} />
       <div style={{ flex: 1 }} />
 
       {/* Search */}
@@ -108,7 +110,7 @@ function AppBar({ role, onRoleChange, onMenu }) {
   );
 }
 
-function Sidebar({ role, screen, onNavigate, collapsed }) {
+export function Sidebar({ role, screen, onNavigate, collapsed }) {
   const items = NAV_BY_ROLE[role];
   const meta = ROLE_META[role];
   const w = collapsed ? 'var(--sidebar-w-c)' : 'var(--sidebar-w)';
@@ -178,5 +180,3 @@ function Sidebar({ role, screen, onNavigate, collapsed }) {
     </aside>
   );
 }
-
-Object.assign(window, { AppBar, Sidebar, NAV_BY_ROLE, ROLE_META });

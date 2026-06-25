@@ -1,12 +1,13 @@
 /* eslint-disable */
 // MRAS UI kit — shared primitives
+import React from 'react';
 
 const { useState, useEffect, useMemo, useRef } = React;
 
 // --------------------------------------------------------------------
 // Icon
 // --------------------------------------------------------------------
-function Icon({ name, size = 20, filled = false, color, style, className }) {
+export function Icon({ name, size = 20, filled = false, color, style, className }) {
   const cls = [
     'ms',
     size === 20 ? 'is-20' : size === 32 ? 'is-32' : size === 48 ? 'is-48' : '',
@@ -33,14 +34,15 @@ const btnStyles = {
   ghost:     { background: 'transparent', color: 'var(--primary)' },
   danger:    { background: 'var(--danger)', color: '#fff' },
 };
-function Button({ kind = 'primary', icon, children, onClick, style, size }) {
+export function Button({ kind = 'primary', icon, children, onClick, style, size, disabled }) {
   const sizeStyle =
     size === 'sm' ? { height: 28, fontSize: 13, padding: '0 12px', borderRadius: 6 } :
     size === 'lg' ? { height: 44, fontSize: 15, padding: '0 20px', borderRadius: 10 } : {};
   return (
     <button
       onClick={onClick}
-      style={{ ...btnStyles.base, ...btnStyles[kind], ...sizeStyle, ...style }}
+      disabled={disabled}
+      style={{ ...btnStyles.base, ...btnStyles[kind], ...sizeStyle, ...style, opacity: disabled ? 0.5 : 1 }}
       onMouseDown={(e) => e.currentTarget.style.filter = 'brightness(0.92)'}
       onMouseUp={(e) => e.currentTarget.style.filter = ''}
       onMouseLeave={(e) => e.currentTarget.style.filter = ''}
@@ -54,7 +56,7 @@ function Button({ kind = 'primary', icon, children, onClick, style, size }) {
 // --------------------------------------------------------------------
 // Card
 // --------------------------------------------------------------------
-function Card({ children, lifted, dense, padding, style }) {
+export function Card({ children, lifted, dense, padding, style }) {
   return (
     <div style={{
       background: 'var(--surface-1)',
@@ -68,7 +70,7 @@ function Card({ children, lifted, dense, padding, style }) {
     </div>
   );
 }
-function CardHeader({ eyebrow, title, action }) {
+export function CardHeader({ eyebrow, title, action }) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14, gap: 12 }}>
       <div>
@@ -83,7 +85,7 @@ function CardHeader({ eyebrow, title, action }) {
 // --------------------------------------------------------------------
 // Chip
 // --------------------------------------------------------------------
-function Chip({ tone = 'neutral', icon, dot, children, style }) {
+export function Chip({ tone = 'neutral', icon, dot, children, style }) {
   const map = {
     low:      { bg: 'var(--risk-low-bg)',      fg: 'var(--success-fg)',  dotC: 'var(--risk-low)' },
     moderate: { bg: 'var(--risk-moderate-bg)', fg: 'var(--warning-fg)',  dotC: 'var(--risk-moderate)' },
@@ -94,7 +96,7 @@ function Chip({ tone = 'neutral', icon, dot, children, style }) {
     danger:   { bg: 'var(--danger-bg)',        fg: 'var(--danger-fg)',   dotC: 'var(--danger)' },
     neutral:  { bg: 'var(--slate-100)',        fg: 'var(--fg-2)',        dotC: 'var(--slate-400)' },
   };
-  const t = map[tone];
+  const t = map[tone] || map.neutral;
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -114,14 +116,14 @@ function Chip({ tone = 'neutral', icon, dot, children, style }) {
 // --------------------------------------------------------------------
 // Banner
 // --------------------------------------------------------------------
-function Banner({ tone = 'info', icon, title, children }) {
+export function Banner({ tone = 'info', icon, title, children }) {
   const map = {
     info:    { bg: 'var(--info-bg)',    bd: '#BFDBFE', fg: 'var(--info-fg)',    ic: 'var(--info)',    di: icon ?? 'info' },
     warning: { bg: 'var(--warning-bg)', bd: '#FDE68A', fg: 'var(--warning-fg)', ic: 'var(--warning)', di: icon ?? 'warning' },
     danger:  { bg: 'var(--danger-bg)',  bd: '#FECACA', fg: 'var(--danger-fg)',  ic: 'var(--danger)',  di: icon ?? 'priority_high' },
     success: { bg: 'var(--success-bg)', bd: '#A7F3D0', fg: 'var(--success-fg)', ic: 'var(--success)', di: icon ?? 'check_circle' },
   };
-  const t = map[tone];
+  const t = map[tone] || map.info;
   return (
     <div style={{
       display: 'flex', gap: 10,
@@ -141,7 +143,7 @@ function Banner({ tone = 'info', icon, title, children }) {
 // --------------------------------------------------------------------
 // Avatar
 // --------------------------------------------------------------------
-function Avatar({ name, size = 32, color = 'var(--primary)' }) {
+export function Avatar({ name, size = 32, color = 'var(--primary)' }) {
   const initials = (name || '?').split(' ').map(s => s[0]).slice(0, 2).join('').toUpperCase();
   return (
     <div style={{
@@ -157,7 +159,7 @@ function Avatar({ name, size = 32, color = 'var(--primary)' }) {
 // --------------------------------------------------------------------
 // StatTile — clinical readout cell
 // --------------------------------------------------------------------
-function StatTile({ icon, label, value, unit, delta, deltaTone }) {
+export function StatTile({ icon, label, value, unit, delta, deltaTone }) {
   const dt = deltaTone === 'good' ? 'var(--success-fg)'
            : deltaTone === 'bad'  ? 'var(--danger-fg)'
            : 'var(--fg-3)';
@@ -178,7 +180,7 @@ function StatTile({ icon, label, value, unit, delta, deltaTone }) {
 // --------------------------------------------------------------------
 // SectionTitle
 // --------------------------------------------------------------------
-function SectionTitle({ children, action }) {
+export function SectionTitle({ children, action }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
       <h2 className="type-h2">{children}</h2>
@@ -190,7 +192,7 @@ function SectionTitle({ children, action }) {
 // --------------------------------------------------------------------
 // JRISSI gauge
 // --------------------------------------------------------------------
-function JrissiGauge({ score, size = 160 }) {
+export function JrissiGauge({ score, size = 160 }) {
   const tone = score < 34 ? 'low' : score < 67 ? 'moderate' : 'high';
   const colorMap = { low: '#10B981', moderate: '#F59E0B', high: '#EF4444' };
   const labelMap = { low: 'Low', moderate: 'Moderate', high: 'High' };
@@ -215,7 +217,7 @@ function JrissiGauge({ score, size = 160 }) {
 // --------------------------------------------------------------------
 // Sparkline
 // --------------------------------------------------------------------
-function Sparkline({ data, width = 120, height = 32, color = 'var(--primary)' }) {
+export function Sparkline({ data, width = 120, height = 32, color = 'var(--primary)' }) {
   if (!data?.length) return null;
   const min = Math.min(...data), max = Math.max(...data);
   const span = max - min || 1;
@@ -230,10 +232,3 @@ function Sparkline({ data, width = 120, height = 32, color = 'var(--primary)' })
     </svg>
   );
 }
-
-// --------------------------------------------------------------------
-// Export to window
-// --------------------------------------------------------------------
-Object.assign(window, {
-  Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline,
-});

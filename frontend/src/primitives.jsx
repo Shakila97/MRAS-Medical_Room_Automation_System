@@ -1,14 +1,12 @@
 /* eslint-disable */
-// MRAS — extended primitives
-// Inputs, Select, Textarea, Modal, Drawer, Toast, FileUpload, CommandPalette,
-// States (empty/loading/error), DataTable, Stepper (form wizard), Chart helpers,
-// DateTime picker, Tabs, Toggle, Menu, Tooltip.
+// MRAS — extended primitives (ES module)
+import React from 'react';
+import { Icon, Button } from './widgets.jsx';
 
-const P = React;
 const { useState: pUS, useEffect: pUE, useMemo: pUM, useRef: pUR } = React;
 
 // ---------------------------------------------------------------- Input
-function Input({ label, hint, error, leading, trailing, value, onChange, placeholder, type = 'text', required, disabled, style }) {
+export function Input({ label, hint, error, leading, trailing, value, onChange, placeholder, type = 'text', required, disabled, style }) {
   const [focused, setFocused] = pUS(false);
   const id = pUM(() => 'i' + Math.random().toString(36).slice(2, 8), []);
   const borderColor = error ? 'var(--danger)' : focused ? 'var(--primary)' : 'var(--border-2)';
@@ -49,7 +47,7 @@ function Input({ label, hint, error, leading, trailing, value, onChange, placeho
 }
 
 // ---------------------------------------------------------------- Select
-function Select({ label, value, onChange, options, placeholder, hint, style }) {
+export function Select({ label, value, onChange, options, placeholder, hint, style }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6, ...style }}>
       {label && <span className="type-label" style={{ color: 'var(--fg-2)' }}>{label}</span>}
@@ -72,7 +70,7 @@ function Select({ label, value, onChange, options, placeholder, hint, style }) {
 }
 
 // ---------------------------------------------------------------- Textarea
-function Textarea({ label, value, onChange, rows = 4, placeholder, hint, style }) {
+export function Textarea({ label, value, onChange, rows = 4, placeholder, hint, style }) {
   const [focused, setFocused] = pUS(false);
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6, ...style }}>
@@ -94,7 +92,7 @@ function Textarea({ label, value, onChange, rows = 4, placeholder, hint, style }
 }
 
 // ---------------------------------------------------------------- Toggle
-function Toggle({ checked, onChange, label, disabled }) {
+export function Toggle({ checked, onChange, label, disabled }) {
   return (
     <label style={{ display: 'inline-flex', alignItems: 'center', gap: 10, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1 }}>
       <span style={{
@@ -116,7 +114,7 @@ function Toggle({ checked, onChange, label, disabled }) {
 }
 
 // ---------------------------------------------------------------- Checkbox
-function Checkbox({ checked, onChange, label, indeterminate }) {
+export function Checkbox({ checked, onChange, label, indeterminate }) {
   const r = pUR(null);
   pUE(() => { if (r.current) r.current.indeterminate = !!indeterminate; }, [indeterminate]);
   return (
@@ -138,7 +136,7 @@ function Checkbox({ checked, onChange, label, indeterminate }) {
 }
 
 // ---------------------------------------------------------------- Tabs
-function Tabs({ value, onChange, items }) {
+export function Tabs({ value, onChange, items }) {
   return (
     <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border-1)' }}>
       {items.map(it => {
@@ -172,11 +170,11 @@ function Tabs({ value, onChange, items }) {
 }
 
 // ---------------------------------------------------------------- Modal
-function Modal({ open, onClose, title, children, footer, width = 480 }) {
+export function Modal({ open, onClose, title, children, footer, width = 480 }) {
   if (!open) return null;
   return (
     <div style={{
-      position: 'absolute', inset: 0, zIndex: 50,
+      position: 'fixed', inset: 0, zIndex: 50,
       background: 'rgba(15, 23, 42, 0.5)',
       backdropFilter: 'blur(2px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -206,11 +204,11 @@ function Modal({ open, onClose, title, children, footer, width = 480 }) {
   );
 }
 
-// ---------------------------------------------------------------- Drawer (right side-sheet)
-function Drawer({ open, onClose, title, eyebrow, children, footer, width = 440 }) {
+// ---------------------------------------------------------------- Drawer
+export function Drawer({ open, onClose, title, eyebrow, children, footer, width = 440 }) {
   if (!open) return null;
   return (
-    <div style={{ position: 'absolute', inset: 0, zIndex: 50 }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50 }} onClick={onClose}>
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.4)' }} />
       <div onClick={(e) => e.stopPropagation()} style={{
         position: 'absolute', top: 0, right: 0, bottom: 0, width, maxWidth: '100%',
@@ -240,14 +238,14 @@ function Drawer({ open, onClose, title, eyebrow, children, footer, width = 440 }
 }
 
 // ---------------------------------------------------------------- Toast
-function Toast({ tone = 'info', title, description, icon, onClose }) {
+export function Toast({ tone = 'info', title, description, icon, onClose }) {
   const map = {
     info:    { bg: 'var(--surface-1)', accent: 'var(--info)',     di: icon ?? 'info' },
     success: { bg: 'var(--surface-1)', accent: 'var(--success)',  di: icon ?? 'check_circle' },
     warning: { bg: 'var(--surface-1)', accent: 'var(--warning)',  di: icon ?? 'warning' },
     danger:  { bg: 'var(--surface-1)', accent: 'var(--danger)',   di: icon ?? 'priority_high' },
   };
-  const t = map[tone];
+  const t = map[tone] || map.info;
   return (
     <div style={{
       display: 'flex', gap: 12, alignItems: 'flex-start',
@@ -270,7 +268,7 @@ function Toast({ tone = 'info', title, description, icon, onClose }) {
 }
 
 // ---------------------------------------------------------------- States
-function EmptyState({ icon = 'inbox', title, description, action }) {
+export function EmptyState({ icon = 'inbox', title, description, action }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '48px 24px', gap: 10 }}>
       <div style={{ width: 64, height: 64, borderRadius: 16, background: 'var(--bg-canvas)', border: '1px solid var(--border-1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -283,7 +281,7 @@ function EmptyState({ icon = 'inbox', title, description, action }) {
   );
 }
 
-function Skeleton({ w = '100%', h = 14, r = 6, style }) {
+export function Skeleton({ w = '100%', h = 14, r = 6, style }) {
   return <span style={{
     display: 'inline-block', width: w, height: h, borderRadius: r,
     background: 'linear-gradient(90deg, var(--bg-canvas), var(--bg-hover), var(--bg-canvas))',
@@ -292,7 +290,7 @@ function Skeleton({ w = '100%', h = 14, r = 6, style }) {
   }} />;
 }
 
-function LoadingRows({ rows = 4 }) {
+export function LoadingRows({ rows = 4 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {Array.from({ length: rows }).map((_, i) => (
@@ -309,7 +307,7 @@ function LoadingRows({ rows = 4 }) {
   );
 }
 
-function ErrorState({ title = 'Couldn\'t load this.', description, onRetry }) {
+export function ErrorState({ title = "Couldn't load this.", description, onRetry }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '40px 24px', gap: 10 }}>
       <div style={{ width: 56, height: 56, borderRadius: 14, background: 'var(--danger-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -323,10 +321,27 @@ function ErrorState({ title = 'Couldn\'t load this.', description, onRetry }) {
 }
 
 // ---------------------------------------------------------------- DataTable
-function DataTable({ columns, rows, selectable, onRowClick, dense, footer, totalLabel, page = 1, pageCount = 1, onPage }) {
+const thStyle = (dense) => ({
+  font: '500 11px var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.04em',
+  color: 'var(--fg-3)', padding: dense ? '8px 12px' : '12px 14px',
+  borderBottom: '1px solid var(--border-1)', background: 'var(--bg-canvas)',
+  position: 'sticky', top: 0,
+});
+const tdStyle = (dense) => ({
+  padding: dense ? '8px 12px' : '12px 14px',
+  borderBottom: '1px solid var(--border-1)',
+  font: '400 13px var(--font-sans)', color: 'var(--fg-1)',
+});
+const pgBtn = (disabled) => ({
+  width: 28, height: 28, borderRadius: 6,
+  border: '1px solid var(--border-1)', background: 'var(--surface-1)',
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.4 : 1, color: 'var(--fg-2)',
+});
+
+export function DataTable({ columns, rows, selectable, onRowClick, dense, footer, totalLabel, page = 1, pageCount = 1, onPage }) {
   const [sort, setSort] = pUS({ col: null, dir: 'asc' });
   const [selected, setSelected] = pUS(new Set());
-
   const sorted = pUM(() => {
     if (!sort.col) return rows;
     const c = sort.col;
@@ -337,10 +352,8 @@ function DataTable({ columns, rows, selectable, onRowClick, dense, footer, total
       return sort.dir === 'asc' ? r : -r;
     });
   }, [rows, sort]);
-
   const allChecked = selected.size === rows.length && rows.length > 0;
   const someChecked = selected.size > 0 && !allChecked;
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <div style={{ overflowX: 'auto' }}>
@@ -412,26 +425,9 @@ function DataTable({ columns, rows, selectable, onRowClick, dense, footer, total
     </div>
   );
 }
-const thStyle = (dense) => ({
-  font: '500 11px var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.04em',
-  color: 'var(--fg-3)', padding: dense ? '8px 12px' : '12px 14px',
-  borderBottom: '1px solid var(--border-1)', background: 'var(--bg-canvas)',
-  position: 'sticky', top: 0,
-});
-const tdStyle = (dense) => ({
-  padding: dense ? '8px 12px' : '12px 14px',
-  borderBottom: '1px solid var(--border-1)',
-  font: '400 13px var(--font-sans)', color: 'var(--fg-1)',
-});
-const pgBtn = (disabled) => ({
-  width: 28, height: 28, borderRadius: 6,
-  border: '1px solid var(--border-1)', background: 'var(--surface-1)',
-  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-  cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.4 : 1, color: 'var(--fg-2)',
-});
 
 // ---------------------------------------------------------------- Stepper
-function Stepper({ steps, current }) {
+export function Stepper({ steps, current }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 0, width: '100%' }}>
       {steps.map((s, i) => {
@@ -460,8 +456,8 @@ function Stepper({ steps, current }) {
   );
 }
 
-// ---------------------------------------------------------------- FileUpload (drop zone)
-function FileUpload({ label, accept, hint, files: ctrlFiles, onFiles }) {
+// ---------------------------------------------------------------- FileUpload
+export function FileUpload({ label, hint, files: ctrlFiles, onFiles }) {
   const [over, setOver] = pUS(false);
   const [files, setFiles] = pUS(ctrlFiles ?? []);
   const setBoth = (f) => { setFiles(f); onFiles?.(f); };
@@ -507,8 +503,8 @@ function FileUpload({ label, accept, hint, files: ctrlFiles, onFiles }) {
   );
 }
 
-// ---------------------------------------------------------------- DateField (simple)
-function DateField({ label, value, onChange, hint }) {
+// ---------------------------------------------------------------- DateField
+export function DateField({ label, value, onChange, hint }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {label && <span className="type-label" style={{ color: 'var(--fg-2)' }}>{label}</span>}
@@ -529,8 +525,10 @@ function DateField({ label, value, onChange, hint }) {
   );
 }
 
-// ---------------------------------------------------------------- Mini Calendar
-function MiniCalendar({ value, onChange, marks = {} }) {
+// ---------------------------------------------------------------- MiniCalendar
+const navBtn = { width: 24, height: 24, border: 0, background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg-3)' };
+
+export function MiniCalendar({ value, onChange, marks = {} }) {
   const today = new Date();
   const [view, setView] = pUS(() => {
     const d = value ? new Date(value) : today;
@@ -552,7 +550,7 @@ function MiniCalendar({ value, onChange, marks = {} }) {
         <button onClick={() => setView(v => ({ y: v.m === 11 ? v.y + 1 : v.y, m: (v.m + 1) % 12 }))} style={navBtn}><Icon name="chevron_right" size={20} /></button>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
-        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+        {['S','M','T','W','T','F','S'].map((d, i) => (
           <div key={i} style={{ textAlign: 'center', font: '600 10px var(--font-sans)', color: 'var(--fg-3)', textTransform: 'uppercase', padding: '4px 0' }}>{d}</div>
         ))}
         {cells.map((d, i) => {
@@ -578,10 +576,9 @@ function MiniCalendar({ value, onChange, marks = {} }) {
     </div>
   );
 }
-const navBtn = { width: 24, height: 24, border: 0, background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg-3)' };
 
-// ---------------------------------------------------------------- LineChart
-function LineChart({ data, width = 480, height = 160, color = 'var(--primary)', fill = true, yMin, yMax, xLabels, refLines = [], unit }) {
+// ---------------------------------------------------------------- Charts
+export function LineChart({ data, width = 480, height = 160, color = 'var(--primary)', fill = true, yMin, yMax, xLabels, refLines = [], unit }) {
   const min = yMin ?? Math.min(...data);
   const max = yMax ?? Math.max(...data);
   const span = max - min || 1;
@@ -636,8 +633,7 @@ function LineChart({ data, width = 480, height = 160, color = 'var(--primary)', 
   );
 }
 
-// ---------------------------------------------------------------- BarChart
-function BarChart({ data, labels, width = 480, height = 160, color = 'var(--primary)', max }) {
+export function BarChart({ data, labels, width = 480, height = 160, color = 'var(--primary)', max }) {
   const m = max ?? Math.max(...data);
   const pad = { l: 32, r: 8, t: 10, b: 22 };
   const w = width - pad.l - pad.r;
@@ -665,8 +661,7 @@ function BarChart({ data, labels, width = 480, height = 160, color = 'var(--prim
   );
 }
 
-// ---------------------------------------------------------------- Donut
-function Donut({ segments, size = 130, thickness = 16, total }) {
+export function Donut({ segments, size = 130, thickness = 16, total }) {
   const sum = total ?? segments.reduce((a, s) => a + s.value, 0);
   const r = (size - thickness) / 2;
   const circ = 2 * Math.PI * r;
@@ -686,8 +681,22 @@ function Donut({ segments, size = 130, thickness = 16, total }) {
   );
 }
 
-// ---------------------------------------------------------------- Command Palette
-function CommandPalette({ open, onClose, items, placeholder = 'Search patients, drugs, IDs…' }) {
+export function Progress({ value, tone = 'primary', height = 6, label }) {
+  const map = { primary: 'var(--primary)', success: 'var(--success)', warning: 'var(--warning)', danger: 'var(--danger)' };
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {label && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="type-caption">{label}</span><span className="type-mono" style={{ fontSize: 12 }}>{value}%</span></div>}
+      <div style={{ width: '100%', height, borderRadius: 999, background: 'var(--bg-hover)', overflow: 'hidden' }}>
+        <div style={{ width: `${value}%`, height: '100%', background: map[tone], borderRadius: 999, transition: 'width var(--dur-medium) var(--ease-std)' }} />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- CommandPalette
+const kbdSm = { font: '500 10px var(--font-mono)', color: 'var(--fg-3)', border: '1px solid var(--border-1)', borderRadius: 3, padding: '1px 4px', background: 'var(--surface-1)' };
+
+export function CommandPalette({ open, onClose, items, placeholder = 'Search patients, drugs, IDs…' }) {
   const [q, setQ] = pUS('');
   const [sel, setSel] = pUS(0);
   const filtered = pUM(() => {
@@ -697,7 +706,7 @@ function CommandPalette({ open, onClose, items, placeholder = 'Search patients, 
   pUE(() => { setSel(0); }, [q]);
   if (!open) return null;
   return (
-    <div style={{ position: 'absolute', inset: 0, zIndex: 80, background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: 80 }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: 80 }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: 560, maxWidth: '90%', background: 'var(--surface-1)', borderRadius: 12, border: '1px solid var(--border-1)', boxShadow: 'var(--shadow-3)', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid var(--border-1)' }}>
           <Icon name="search" size={20} style={{ color: 'var(--fg-3)' }} />
@@ -738,23 +747,9 @@ function CommandPalette({ open, onClose, items, placeholder = 'Search patients, 
     </div>
   );
 }
-const kbdSm = { font: '500 10px var(--font-mono)', color: 'var(--fg-3)', border: '1px solid var(--border-1)', borderRadius: 3, padding: '1px 4px', background: 'var(--surface-1)' };
-
-// ---------------------------------------------------------------- Tooltip / Tag list / Progress
-function Progress({ value, tone = 'primary', height = 6, label }) {
-  const map = { primary: 'var(--primary)', success: 'var(--success)', warning: 'var(--warning)', danger: 'var(--danger)' };
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {label && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="type-caption">{label}</span><span className="type-mono" style={{ fontSize: 12 }}>{value}%</span></div>}
-      <div style={{ width: '100%', height, borderRadius: 999, background: 'var(--bg-hover)', overflow: 'hidden' }}>
-        <div style={{ width: `${value}%`, height: '100%', background: map[tone], borderRadius: 999, transition: 'width var(--dur-medium) var(--ease-std)' }} />
-      </div>
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------- Global animation styles
-function GlobalAnims() {
+export function GlobalAnims() {
   return (
     <style>{`
       @keyframes mrasShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
@@ -764,13 +759,3 @@ function GlobalAnims() {
     `}</style>
   );
 }
-
-Object.assign(window, {
-  Input, Select, Textarea, Toggle, Checkbox, Tabs,
-  Modal, Drawer, Toast,
-  EmptyState, Skeleton, LoadingRows, ErrorState,
-  DataTable, Stepper, FileUpload,
-  DateField, MiniCalendar,
-  LineChart, BarChart, Donut, Progress,
-  CommandPalette, GlobalAnims,
-});
