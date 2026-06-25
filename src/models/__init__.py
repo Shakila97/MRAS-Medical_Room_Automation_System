@@ -63,25 +63,7 @@ class GRNStatus(str, Enum):
 
 
 # ── Patient ────────────────────────────────────────────────────────────────────
-
-class Patient(SQLModel, table=True):
-    __tablename__ = "patients"
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="users.id", index=True)
-    employee_id: str = Field(index=True)
-    full_name: str
-    date_of_birth: Optional[date] = None
-    blood_type: Optional[str] = None
-    allergies: Optional[str] = None            # comma-separated or JSON
-    conditions: Optional[str] = None           # known chronic conditions, JSON list
-    height_cm: Optional[float] = None
-    weight_kg: Optional[float] = None
-    department: Optional[str] = None
-    is_active: bool = Field(default=True)
-    last_checkin_at: Optional[datetime] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+from src.models.patient import Patient, BloodGroup, Gender, Department  # noqa: F401
 
 
 # ── Vitals ─────────────────────────────────────────────────────────────────────

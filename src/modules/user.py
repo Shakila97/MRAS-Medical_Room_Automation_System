@@ -16,6 +16,7 @@ class UserRole(str, Enum):
     EMPLOYEE       = "employee"        # Own health profile, check-in, notifications
     DOCTOR         = "doctor"          # All patient records, JRISSI, briefings
     PHARMACY_STAFF = "pharmacy_staff"  # Inventory, FEFO, GRN only
+    PHARMACY       = "pharmacy_staff"  # Alias for API endpoints compatibility
     ADMIN          = "admin"           # System settings, users — no PHI
 
 
