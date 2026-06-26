@@ -1,0 +1,24 @@
+<!doctype html>
+<!-- @dsCard group="Brand" name="Inputs" subtitle="Text · select · validation" viewport="700x200" -->
+<html><head><meta charset="utf-8"><title>Inputs</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 20px; background: var(--surface-1); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font: 500 12px var(--font-sans); color: var(--fg-2); }
+  .input { font: 400 14px var(--font-sans); color: var(--fg-1); background: var(--surface-1); border: 1px solid var(--border-2); border-radius: 8px; height: 38px; padding: 0 12px; outline: none; transition: border-color var(--dur-micro) var(--ease-std), box-shadow var(--dur-micro) var(--ease-std); }
+  .input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-tint); }
+  .input.err  { border-color: var(--danger); }
+  .helper { font: 400 11px var(--font-sans); color: var(--fg-3); }
+  .helper.err { color: var(--danger-fg); }
+  .select { appearance: none; background: var(--surface-1) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%2364748B' stroke-width='1.5' fill='none' stroke-linecap='round'/></svg>") no-repeat right 12px center; padding-right: 32px; }
+</style></head>
+<body>
+  <div class="grid">
+    <div class="field"><label>Patient ID</label><input class="input" value="SIS/24/B2/15" /><div class="helper">Auto-filled from QR scan</div></div>
+    <div class="field"><label>Department</label><select class="input select"><option>Engineering</option><option>HR</option></select></div>
+    <div class="field"><label>Blood pressure</label><input class="input" placeholder="120/80" /></div>
+    <div class="field"><label>Dosage</label><input class="input err" value="500mgg" /><div class="helper err">Unit not recognised</div></div>
+  </div>
+</body></html>

@@ -1,0 +1,191 @@
+// MRAS component overrides — apply MUI baseline styles that match the system.
+// Merge into mrasTheme via `components: { ...componentOverrides }` if you want
+// global defaults. Or pull only the bits you need.
+//
+// Usage:
+//   import { mrasTheme } from './theme';
+//   import { componentOverrides } from './componentOverrides';
+//   const finalTheme = createTheme({ ...mrasTheme, components: componentOverrides });
+
+import type { Components, Theme } from '@mui/material/styles';
+
+export const componentOverrides: Components<Theme> = {
+  // -------------------------------------------------------------------------
+  // Buttons — flat, no shadow, no scale, our radii
+  // -------------------------------------------------------------------------
+  MuiButton: {
+    defaultProps: {
+      disableElevation: true,
+      disableRipple: false,
+    },
+    styleOverrides: {
+      root: ({ theme }) => ({
+        borderRadius: 8,
+        textTransform: 'none',
+        fontWeight: 500,
+        boxShadow: 'none',
+        '&:hover': { boxShadow: 'none' },
+      }),
+      sizeSmall:  { height: 28, fontSize: 13, padding: '0 12px', borderRadius: 6 },
+      sizeMedium: { height: 36, fontSize: 14, padding: '0 16px', borderRadius: 8 },
+      sizeLarge:  { height: 44, fontSize: 15, padding: '0 20px', borderRadius: 10 },
+      containedPrimary: ({ theme }) => ({
+        '&:hover': { backgroundColor: theme.palette.primary.dark },
+      }),
+      outlined: ({ theme }) => ({
+        borderColor: theme.palette.divider,
+        color: theme.palette.text.primary,
+      }),
+    },
+  },
+
+  // -------------------------------------------------------------------------
+  // Card — border-only by default, optional shadow on `raised`
+  // -------------------------------------------------------------------------
+  MuiCard: {
+    defaultProps: { elevation: 0 },
+    styleOverrides: {
+      root: ({ theme }) => ({
+        border: `1px solid ${theme.palette.divider}`,
+        borderRadius: 10,
+        boxShadow: 'none',
+      }),
+    },
+  },
+  MuiCardHeader: {
+    styleOverrides: {
+      root: { padding: '14px 20px' },
+      title: { fontSize: 16, fontWeight: 600 },
+      subheader: { fontSize: 12, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 },
+    },
+  },
+  MuiCardContent: {
+    styleOverrides: {
+      root: { padding: 20, '&:last-child': { paddingBottom: 20 } },
+    },
+  },
+
+  // -------------------------------------------------------------------------
+  // Paper — flat, no gradient overlays on elevated surfaces
+  // -------------------------------------------------------------------------
+  MuiPaper: {
+    defaultProps: { elevation: 0 },
+    styleOverrides: {
+      root: { backgroundImage: 'none' },
+    },
+  },
+
+  // -------------------------------------------------------------------------
+  // Chip — pill, status tones via color prop
+  // -------------------------------------------------------------------------
+  MuiChip: {
+    styleOverrides: {
+      root: { fontWeight: 500, fontSize: 12, height: 24, borderRadius: 999 },
+      label: { padding: '0 10px' },
+    },
+  },
+
+  // -------------------------------------------------------------------------
+  // TextField / Input
+  // -------------------------------------------------------------------------
+  MuiTextField: {
+    defaultProps: { size: 'small', variant: 'outlined' },
+  },
+  MuiOutlinedInput: {
+    styleOverrides: {
+      root: ({ theme }) => ({
+        borderRadius: 8,
+        backgroundColor: theme.palette.background.paper,
+        fontSize: 14,
+        '& fieldset': { borderColor: theme.palette.divider },
+        '&:hover fieldset': { borderColor: theme.palette.grey[300] },
+        '&.Mui-focused fieldset': {
+          borderColor: theme.palette.primary.main,
+          borderWidth: 1,
+          boxShadow: `0 0 0 3px ${theme.palette.primary.main}1a`, // 10% alpha
+        },
+      }),
+      input: { padding: '10px 12px' },
+    },
+  },
+
+  // -------------------------------------------------------------------------
+  // AppBar — flat, blurred, no shadow
+  // -------------------------------------------------------------------------
+  MuiAppBar: {
+    defaultProps: { elevation: 0, color: 'default' },
+    styleOverrides: {
+      root: ({ theme }) => ({
+        backgroundColor: 'rgba(248, 250, 252, 0.85)',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
+        color: theme.palette.text.primary,
+        borderBottom: `1px solid ${theme.palette.divider}`,
+        boxShadow: 'none',
+      }),
+    },
+  },
+
+  // -------------------------------------------------------------------------
+  // List / Table density — clinical UI is medium-high density
+  // -------------------------------------------------------------------------
+  MuiListItem: {
+    styleOverrides: {
+      root: { padding: '8px 16px' },
+    },
+  },
+  MuiTableCell: {
+    styleOverrides: {
+      root: ({ theme }) => ({
+        borderBottom: `1px solid ${theme.palette.divider}`,
+        fontSize: 13,
+      }),
+      head: ({ theme }) => ({
+        backgroundColor: theme.palette.background.default,
+        color: theme.palette.text.secondary,
+        fontSize: 11,
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        letterSpacing: '0.04em',
+      }),
+    },
+  },
+
+  // -------------------------------------------------------------------------
+  // Dialog — shadow-3 elevation
+  // -------------------------------------------------------------------------
+  MuiDialog: {
+    styleOverrides: {
+      paper: { borderRadius: 16 },
+    },
+  },
+
+  // -------------------------------------------------------------------------
+  // Tooltip
+  // -------------------------------------------------------------------------
+  MuiTooltip: {
+    styleOverrides: {
+      tooltip: ({ theme }) => ({
+        backgroundColor: theme.palette.grey[800],
+        fontSize: 12,
+        padding: '6px 10px',
+        borderRadius: 6,
+      }),
+    },
+  },
+
+  // -------------------------------------------------------------------------
+  // CssBaseline — load fonts globally
+  // -------------------------------------------------------------------------
+  MuiCssBaseline: {
+    styleOverrides: `
+      @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap');
+      body {
+        font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+        -webkit-font-smoothing: antialiased;
+      }
+      .tabular-nums { font-variant-numeric: tabular-nums; }
+    `,
+  },
+};

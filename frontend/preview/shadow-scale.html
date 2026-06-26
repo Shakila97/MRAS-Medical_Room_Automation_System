@@ -1,0 +1,19 @@
+<!doctype html>
+<!-- @dsCard group="Brand" name="Shadow scale" subtitle="Lifted · menu · dialog" viewport="700x200" -->
+<html><head><meta charset="utf-8"><title>Shadow scale</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 28px 24px; background: var(--bg-canvas); }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .item { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .box  { width: 100%; height: 90px; background: var(--surface-1); border-radius: 10px; border: 1px solid var(--border-1); }
+  .name { font: 500 12px var(--font-mono); color: var(--fg-2); }
+  .desc { font: 400 11px var(--font-sans); color: var(--fg-3); }
+</style></head>
+<body>
+  <div class="grid">
+    <div class="item"><div class="box" style="box-shadow:var(--shadow-1)"></div><div class="name">--shadow-1</div><div class="desc">Lifted card</div></div>
+    <div class="item"><div class="box" style="box-shadow:var(--shadow-2)"></div><div class="name">--shadow-2</div><div class="desc">Menu · popover</div></div>
+    <div class="item"><div class="box" style="box-shadow:var(--shadow-3)"></div><div class="name">--shadow-3</div><div class="desc">Dialog · modal</div></div>
+  </div>
+</body></html>

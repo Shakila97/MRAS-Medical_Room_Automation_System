@@ -1,49 +1,64 @@
-// @ts-nocheck
-import axios from 'axios'
+import axios from 'axios';
 
-const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api',
-  headers: { 'Content-Type': 'application/json' },
-})
+// Create a singleton axios instance
+export const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-// ── Request interceptor — attach token ────────────────────────────────────────
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token')
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
+// Request interceptor to attach JWT token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
-// ── Response interceptor — handle 401 ────────────────────────────────────────
+// Response interceptor to handle 401 Unauthorized and token refresh
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const original = error.config
-
-    if (error.response?.status === 401 && !original._retry) {
-      original._retry = true
-      const refreshToken = localStorage.getItem('refresh_token')
-
-      if (refreshToken) {
-        try {
-          const res = await axios.post('http://127.0.0.1:8000/api/auth/refresh', {
-            refresh_token: refreshToken,
-          })
-          const { access_token, refresh_token } = res.data
-          localStorage.setItem('access_token', access_token)
-          localStorage.setItem('refresh_token', refresh_token)
-          original.headers.Authorization = `Bearer ${access_token}`
-          return api(original)
-        } catch {
-          localStorage.clear()
-          window.location.href = '/login'
+    const originalRequest = error.config;
+    
+    // If error is 401 and we haven't already tried to refresh
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      try {
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
         }
-      } else {
-        localStorage.clear()
-        window.location.href = '/login'
+        
+        // Attempt to refresh
+        const { data } = await axios.post(
+          `${api.defaults.baseURL}/auth/refresh`,
+          { refresh_token: refreshToken }
+        );
+        
+        // Save new tokens
+        localStorage.setItem('access_token', data.access_token);
+        localStorage.setItem('refresh_token', data.refresh_token);
+        
+        // Retry original request with new token
+        originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
+        return api(originalRequest);
+        
+      } catch (refreshError) {
+        // Refresh failed, force logout
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        window.location.href = '/auth/login';
+        return Promise.reject(refreshError);
       }
     }
-    return Promise.reject(error)
+    
+    return Promise.reject(error);
   }
-)
-
-export default api
+);

@@ -1,0 +1,31 @@
+<!doctype html>
+<!-- @dsCard group="Brand" name="JRISSI gauge" subtitle="Mental-health score widget" viewport="700x220" -->
+<html><head><meta charset="utf-8"><title>JRISSI gauge</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 16px; background: var(--surface-1); display: flex; gap: 24px; align-items: center; }
+  .gauge { position: relative; width: 180px; height: 180px; }
+  .gauge svg { transform: rotate(-90deg); }
+  .gauge .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .gauge .v { font: 600 38px var(--font-mono); color: var(--fg-1); }
+  .gauge .l { font: 600 10px var(--font-sans); color: var(--fg-3); letter-spacing: .08em; text-transform: uppercase; }
+  .meta { font: 400 13px var(--font-sans); color: var(--fg-2); max-width: 320px; line-height: 1.45; }
+  .meta h3 { font: 600 18px var(--font-sans); color: var(--fg-1); margin: 0 0 6px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font: 500 12px var(--font-sans); padding: 3px 10px; border-radius: 999px; background: var(--risk-moderate-bg); color: var(--warning-fg); margin-top: 8px; }
+  .pill .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--risk-moderate); }
+</style></head>
+<body>
+  <div class="gauge">
+    <svg width="180" height="180" viewBox="0 0 180 180">
+      <circle cx="90" cy="90" r="76" stroke="#E2E8F0" stroke-width="14" fill="none"/>
+      <!-- 48/100 ≈ moderate -->
+      <circle cx="90" cy="90" r="76" stroke="#F59E0B" stroke-width="14" fill="none" stroke-linecap="round" stroke-dasharray="477" stroke-dashoffset="248"/>
+    </svg>
+    <div class="center"><div class="v">48</div><div class="l">JRISSI · /100</div></div>
+  </div>
+  <div class="meta">
+    <h3>Mental health risk</h3>
+    Pattern includes 14-day sleep disruption and 22% drop in social-contact signals.
+    <span class="pill"><span class="dot"></span>Moderate · suggest check-in</span>
+  </div>
+</body></html>

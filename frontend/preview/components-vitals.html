@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- @dsCard group="Brand" name="Vital signs row" subtitle="5-up clinical readout" viewport="700x120" -->
+<html><head><meta charset="utf-8"><title>Vitals row</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 16px; background: var(--surface-1); }
+  .vitals { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; border: 1px solid var(--border-1); border-radius: 12px; overflow: hidden; }
+  .vc { padding: 14px 16px; border-right: 1px solid var(--border-1); display: flex; flex-direction: column; gap: 4px; }
+  .vc:last-child { border-right: 0; }
+  .vl { font: 600 11px var(--font-sans); letter-spacing: .04em; text-transform: uppercase; color: var(--fg-3); display: flex; align-items: center; gap: 6px; }
+  .vv { font: 500 22px var(--font-mono); color: var(--fg-1); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+  .vu { font: 400 12px var(--font-sans); color: var(--fg-3); margin-left: 3px; }
+  .ms.is-20 { color: var(--primary); }
+</style></head>
+<body>
+  <div class="vitals">
+    <div class="vc"><div class="vl"><span class="ms is-20">ecg_heart</span>Heart rate</div><div class="vv">72<span class="vu">bpm</span></div></div>
+    <div class="vc"><div class="vl"><span class="ms is-20">monitor_heart</span>BP</div><div class="vv">120/80<span class="vu">mmHg</span></div></div>
+    <div class="vc"><div class="vl"><span class="ms is-20">thermostat</span>Temp</div><div class="vv">36.6<span class="vu">°C</span></div></div>
+    <div class="vc"><div class="vl"><span class="ms is-20">scale</span>Weight</div><div class="vv">68.4<span class="vu">kg</span></div></div>
+    <div class="vc"><div class="vl"><span class="ms is-20">directions_walk</span>Steps</div><div class="vv">7,432</div></div>
+  </div>
+</body></html>

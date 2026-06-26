@@ -5,13 +5,20 @@ from sqlmodel import SQLModel
 
 from src.core.config import settings
 
-# ── Engine ───────────────────────────────────────────────────────────────────
+# ── Engine ────────────────────────────────────────────────────────────────────
+# SQLite (dev) needs connect_args; PostgreSQL does not
+_is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=settings.APP_ENV == "development",  # SQL logging in dev only
-    pool_size=10,
-    max_overflow=20,
-    pool_pre_ping=True,  # Detect stale connections
+    echo=settings.APP_ENV == "development",
+    connect_args={"check_same_thread": False} if _is_sqlite else {},
+    # Connection pool settings (ignored by SQLite)
+    **({} if _is_sqlite else {
+        "pool_size": 10,
+        "max_overflow": 20,
+        "pool_pre_ping": True,
+    }),
 )
 
 AsyncSessionLocal = async_sessionmaker(
@@ -21,7 +28,7 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
-# ── Dependency ───────────────────────────────────────────────────────────────
+# ── Dependency ────────────────────────────────────────────────────────────────
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency — yields an async DB session per request.
@@ -43,5 +50,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 # ── Table creation (dev only — use Alembic in production) ────────────────────
 async def create_db_tables() -> None:
     """Create all tables defined in SQLModel models. Dev/test use only."""
+    # Import all models so SQLModel.metadata knows about them
+    import src.models  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)

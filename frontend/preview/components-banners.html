@@ -1,0 +1,24 @@
+<!doctype html>
+<!-- @dsCard group="Brand" name="Alert banners" subtitle="Info · warning · danger · success" viewport="700x260" -->
+<html><head><meta charset="utf-8"><title>Alert banner</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 14px; background: var(--surface-1); display: flex; flex-direction: column; gap: 8px; }
+  .banner { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 10px; border: 1px solid; font: 400 13px var(--font-sans); line-height: 1.45; }
+  .banner b { font-weight: 600; color: var(--fg-1); }
+  .banner .ms { flex: 0 0 auto; margin-top: 1px; }
+  .info  { background: var(--info-bg); border-color: #BFDBFE; color: var(--info-fg); }
+  .info .ms { color: var(--info); }
+  .warn  { background: var(--warning-bg); border-color: #FDE68A; color: var(--warning-fg); }
+  .warn .ms { color: var(--warning); }
+  .err   { background: var(--danger-bg); border-color: #FECACA; color: var(--danger-fg); }
+  .err .ms  { color: var(--danger); }
+  .ok    { background: var(--success-bg); border-color: #A7F3D0; color: var(--success-fg); }
+  .ok .ms { color: var(--success); }
+</style></head>
+<body>
+  <div class="banner info"><span class="ms is-20">info</span><div><b>Pre-visit briefing ready.</b> AI summary based on the last 14 days is attached to the consultation.</div></div>
+  <div class="banner warn"><span class="ms is-20">warning</span><div><b>Pollen forecast rising Thursday.</b> 3 employees with seasonal allergy history have been flagged.</div></div>
+  <div class="banner err"><span class="ms is-20">priority_high</span><div><b>JRISSI sustained High for 14 days.</b> Auto-escalation triggered. Recommend consultation.</div></div>
+  <div class="banner ok"><span class="ms is-20">check_circle</span><div><b>Prescription saved.</b> Inventory updated. Drug-interaction check passed.</div></div>
+</body></html>

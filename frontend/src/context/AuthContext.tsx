@@ -1,72 +1,79 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import * as authApi from '../api/auth'
-import type { User } from '../types'
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { api } from '../api/client';
 
-interface AuthContextType {
-  user: User | null
-  loading: boolean
-  login: (email: string, password: string) => Promise<void>
-  logout: () => void
-  isAuthenticated: boolean
-  isLoading: boolean
-  isDoctor: boolean
-  isAdmin: boolean
-  isEmployee: boolean
+export type UserRole = 'doctor' | 'employee' | 'pharmacy' | 'admin';
+
+export interface User {
+  id: number;
+  email: string;
+  full_name: string;
+  employee_id: string | null;
+  role: UserRole;
+  is_active: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null)
+interface AuthContextType {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (tokenData: { access_token: string, refresh_token: string, user: User }) => void;
+  logout: () => void;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // ── Load user on app start if token exists ────────────────────────────────
   useEffect(() => {
-    const token = localStorage.getItem('access_token')
-    if (token) {
-      authApi.getMe()
-        .then(setUser)
-        .catch(() => localStorage.clear())
-        .finally(() => setLoading(false))
-    } else {
-      setLoading(false)
-    }
-  }, [])
+    // Check for existing session on mount
+    const initAuth = async () => {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        try {
+          const { data } = await api.get('/auth/me');
+          setUser(data);
+        } catch (error) {
+          console.error("Session restoration failed:", error);
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+        }
+      }
+      setIsLoading(false);
+    };
 
-  const login = async (email: string, password: string) => {
-    const data = await authApi.login({ email, password })
-    localStorage.setItem('access_token', data.access_token)
-    localStorage.setItem('refresh_token', data.refresh_token)
-    setUser(data.user)
-  }
+    initAuth();
+  }, []);
+
+  const login = (tokenData: { access_token: string, refresh_token: string, user: User }) => {
+    localStorage.setItem('access_token', tokenData.access_token);
+    localStorage.setItem('refresh_token', tokenData.refresh_token);
+    setUser(tokenData.user);
+  };
 
   const logout = () => {
-    authApi.logout()
-    setUser(null)
-  }
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    setUser(null);
+    window.location.href = '/auth/login';
+  };
 
-  const isAuthenticated = !!user
-  const isLoading = loading
+  const value = {
+    user,
+    isAuthenticated: !!user,
+    isLoading,
+    login,
+    logout
+  };
 
-  return (
-    <AuthContext.Provider value={{
-      user,
-      loading,
-      login,
-      logout,
-      isAuthenticated,
-      isLoading,
-      isDoctor: user?.role === 'doctor',
-      isAdmin: user?.role === 'admin',
-      isEmployee: user?.role === 'employee',
-    }}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider')
-  return ctx
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 }

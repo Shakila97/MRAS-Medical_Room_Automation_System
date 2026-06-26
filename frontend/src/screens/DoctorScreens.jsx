@@ -1,0 +1,657 @@
+﻿/* eslint-disable */
+import React from 'react';
+import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
+import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
+// JRISSI deep-dive panel, Predictive forecasting view.
+
+// ============================================================================
+// 1. SOAP CONSULTATION EDITOR
+// ============================================================================
+export function SoapEditor() {
+  const [tab, setTab] = React.useState('s');
+  const [s, setS] = React.useState('Patient reports recurrent morning headaches over the past 10 days, worse after long meeting blocks. Mild congestion. Denies fever or photophobia. Sleep self-reported 5–6 h.');
+  const [o, setO] = React.useState('BP 128/84 mmHg · HR 76 bpm · Temp 36.7 °C · SpO₂ 97% · BMI 24.1. No nasal discharge. Mild scleral injection. Chest clear.');
+  const [a, setA] = React.useState('Tension-type headache likely; rule out early seasonal allergic rhinitis. JRISSI elevated to 78 — flagged for OH escalation.');
+  const [p, setP] = React.useState('1) Cetirizine 10 mg OD × 7d. 2) Sleep hygiene leaflet. 3) Re-check JRISSI in 7d, escalate to OH psych if sustained.');
+  const tabs = [
+    { value: 's', label: 'Subjective', icon: 'edit_note' },
+    { value: 'o', label: 'Objective', icon: 'monitor_heart' },
+    { value: 'a', label: 'Assessment', icon: 'psychology' },
+    { value: 'p', label: 'Plan', icon: 'task_alt' },
+  ];
+  const content = { s, o, a, p };
+  const setters = { s: setS, o: setO, a: setA, p: setP };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
+        <div>
+          <div className="type-eyebrow" style={{ marginBottom: 6 }}>Consultation · started 09:34</div>
+          <h1 className="type-h1">SOAP — A. Perera</h1>
+          <p className="type-body" style={{ marginTop: 6 }}>E-002417 · Engineering · 34 y · M · <span style={{ color: 'var(--danger-fg)' }}>JRISSI 78</span></p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button kind="ghost" icon="history">History</Button>
+          <Button kind="secondary" icon="save">Save draft</Button>
+          <Button kind="primary" icon="check">Sign &amp; close</Button>
+        </div>
+      </header>
+
+      <Banner tone="warning" title="JRISSI sustained High for 14 days.">Consider escalation to OH psych as part of plan. <a href="#" style={{ color: 'var(--warning-fg)', textDecoration: 'underline' }}>Open JRISSI deep-dive</a>.</Banner>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20 }}>
+        <Card padding={0}>
+          <div style={{ padding: '14px 20px 0' }}>
+            <Tabs value={tab} onChange={setTab} items={tabs} />
+          </div>
+          <div style={{ padding: 20 }}>
+            <div className="type-eyebrow" style={{ marginBottom: 10 }}>
+              {tabs.find(t => t.value === tab).label} · {tab === 's' ? 'what the patient says' : tab === 'o' ? 'what you observe' : tab === 'a' ? 'your assessment' : 'agreed plan'}
+            </div>
+            <Textarea rows={9} value={content[tab]} onChange={setters[tab]} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
+              <div className="type-caption">{content[tab].length} chars · auto-saved 12 s ago</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <Button kind="ghost" size="sm" icon="auto_awesome">Suggest from history</Button>
+                <Button kind="ghost" size="sm" icon="mic">Dictate</Button>
+              </div>
+            </div>
+          </div>
+          {/* Tab strip footer with progress */}
+          <div style={{ display: 'flex', borderTop: '1px solid var(--border-1)' }}>
+            {tabs.map((t, i) => (
+              <button key={t.value} onClick={() => setTab(t.value)} style={{
+                flex: 1, border: 0, padding: '14px 16px', cursor: 'pointer',
+                background: tab === t.value ? 'var(--bg-selected)' : 'var(--surface-1)',
+                borderRight: i < tabs.length - 1 ? '1px solid var(--border-1)' : 0,
+                display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4,
+                color: 'var(--fg-2)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Icon name={content[t.value] ? 'check_circle' : 'radio_button_unchecked'} size={20} style={{ fontSize: 14, color: content[t.value] ? 'var(--success)' : 'var(--fg-4)' }} />
+                  <span style={{ font: '500 12px var(--font-sans)' }}>{t.label}</span>
+                </div>
+                <span className="type-caption" style={{ fontSize: 11 }}>{content[t.value] ? `${content[t.value].split(/\s+/).length} words` : 'Empty'}</span>
+              </button>
+            ))}
+          </div>
+        </Card>
+
+        {/* Side rail — patient context + vitals */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Card>
+            <CardHeader eyebrow="Vitals · today" title="At a glance" />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {[
+                { l: 'BP', v: '128/84', u: 'mmHg', t: 'warning' },
+                { l: 'HR', v: '76', u: 'bpm', t: 'success' },
+                { l: 'Temp', v: '36.7', u: '°C', t: 'success' },
+                { l: 'SpO₂', v: '97', u: '%', t: 'success' },
+              ].map((m, i) => (
+                <div key={i} style={{ padding: 12, borderRadius: 8, background: 'var(--bg-canvas)', border: '1px solid var(--border-1)' }}>
+                  <div className="type-caption" style={{ marginBottom: 4 }}>{m.l}</div>
+                  <div className="type-clinical" style={{ fontSize: 18 }}>{m.v}<span style={{ font: '400 11px var(--font-sans)', color: 'var(--fg-3)', marginLeft: 3 }}>{m.u}</span></div>
+                  <div style={{ marginTop: 4, height: 3, borderRadius: 999, background: `var(--${m.t})`, opacity: 0.7 }} />
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader eyebrow="Known flags" title="Patient context" />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+              <Chip tone="high" dot>JRISSI High · 14d</Chip>
+              <Chip tone="warning">Asthma</Chip>
+              <Chip tone="info">Allergy: pollen</Chip>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[
+                { d: '12 May', t: 'BP review · borderline' },
+                { d: '05 May', t: 'JRISSI questionnaire · 68' },
+                { d: '28 Apr', t: 'Allergic rhinitis consult' },
+                { d: '14 Apr', t: 'Annual health check' },
+              ].map((r, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, paddingBottom: 8, borderBottom: i < 3 ? '1px dashed var(--border-1)' : 0 }}>
+                  <span className="type-mono" style={{ fontSize: 12, color: 'var(--fg-3)', width: 48 }}>{r.d}</span>
+                  <span className="type-body-s" style={{ color: 'var(--fg-1)' }}>{r.t}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// 2. PRESCRIPTION WRITER
+// ============================================================================
+export function PrescriptionWriter() {
+  const rx = [
+    { name: 'Cetirizine', brand: 'Zyrtec', strength: '10 mg', form: 'tab', dose: '1 tab OD', dur: '7 days', stock: 124, interactions: 0 },
+    { name: 'Paracetamol', brand: 'Panadol', strength: '500 mg', form: 'tab', dose: '1–2 tab QDS PRN', dur: '5 days', stock: 312, interactions: 0 },
+  ];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
+        <div>
+          <div className="type-eyebrow" style={{ marginBottom: 6 }}>Consultation · prescription</div>
+          <h1 className="type-h1">Prescription — A. Perera</h1>
+          <p className="type-body" style={{ marginTop: 6 }}>Linked to today\u2019s consultation note · auto-sent to pharmacy on sign</p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button kind="ghost" icon="content_copy">Copy from last visit</Button>
+          <Button kind="secondary" icon="save">Save draft</Button>
+          <Button kind="primary" icon="send">Sign &amp; send</Button>
+        </div>
+      </header>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
+        <Card padding={0}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-1)', display: 'flex', gap: 10, alignItems: 'center' }}>
+            <Input value="" placeholder="Search by generic, brand, or ATC code…" leading="search" style={{ flex: 1 }} onChange={() => {}} />
+            <Button kind="secondary" icon="qr_code_scanner" size="sm">Scan</Button>
+          </div>
+          <div>
+            {rx.map((r, i) => (
+              <div key={i} style={{ padding: 20, borderBottom: i < rx.length - 1 ? '1px solid var(--border-1)' : 0 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div className="type-h4">{r.name} {r.strength}</div>
+                      <Chip tone="neutral">{r.brand}</Chip>
+                      <Chip tone={r.interactions === 0 ? 'success' : 'warning'} icon={r.interactions === 0 ? 'check_circle' : 'warning'}>
+                        {r.interactions === 0 ? 'No interactions' : `${r.interactions} interactions`}
+                      </Chip>
+                    </div>
+                    <div className="type-caption" style={{ marginTop: 4 }}>Stock: {r.stock} packs · expires 2027-03 · FEFO ready</div>
+                  </div>
+                  <button style={{ border: 0, background: 'transparent', cursor: 'pointer' }}>
+                    <Icon name="close" size={20} style={{ color: 'var(--fg-3)' }} />
+                  </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+                  <Input label="Dose" value={r.dose} onChange={() => {}} />
+                  <Input label="Duration" value={r.dur} onChange={() => {}} />
+                  <Select label="Route" value="oral" options={[
+                    { value: 'oral', label: 'Oral' }, { value: 'topical', label: 'Topical' }, { value: 'iv', label: 'IV' },
+                  ]} onChange={() => {}} />
+                  <Input label="Quantity" value={r.form === 'tab' ? '7 tab' : '1 pack'} onChange={() => {}} />
+                </div>
+                <Textarea label="Instructions to patient" rows={2}
+                  value={r.name === 'Cetirizine' ? 'Take in the evening. Do not combine with alcohol.' : 'Take with food. Maximum 4 doses in 24 h.'} onChange={() => {}}
+                  style={{ marginTop: 12 }} />
+              </div>
+            ))}
+          </div>
+          <div style={{ padding: 16, background: 'var(--bg-canvas)', borderTop: '1px solid var(--border-1)' }}>
+            <Button kind="ghost" icon="add">Add another medication</Button>
+          </div>
+        </Card>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Card>
+            <CardHeader eyebrow="Safety" title="Interaction check" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: 'var(--success-bg)', border: '1px solid #A7F3D0' }}>
+              <Icon name="check_circle" size={20} style={{ color: 'var(--success)' }} />
+              <div className="type-body-s" style={{ color: 'var(--success-fg)' }}>No interactions with patient history or active medications.</div>
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <div className="type-eyebrow" style={{ marginBottom: 8 }}>Checked against</div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <li className="type-body-s" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Icon name="check" size={20} style={{ fontSize: 14, color: 'var(--success)' }} /> Active prescriptions (2)</li>
+                <li className="type-body-s" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Icon name="check" size={20} style={{ fontSize: 14, color: 'var(--success)' }} /> Allergy register (pollen)</li>
+                <li className="type-body-s" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Icon name="check" size={20} style={{ fontSize: 14, color: 'var(--success)' }} /> Renal &amp; hepatic flags (none)</li>
+                <li className="type-body-s" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Icon name="check" size={20} style={{ fontSize: 14, color: 'var(--success)' }} /> Pregnancy register (n/a)</li>
+              </ul>
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader eyebrow="Coverage" title="Pharmacy &amp; cost" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="type-body-s">In on-site stock</span>
+                <span className="type-mono" style={{ color: 'var(--success-fg)' }}>2 / 2</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="type-body-s">Co-pay (employee)</span>
+                <span className="type-mono">LKR 0.00</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="type-body-s">Charged to company</span>
+                <span className="type-mono">LKR 380.00</span>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// 3. JRISSI DEEP-DIVE
+// ============================================================================
+export function JrissiDeepDive() {
+  const trend = [38, 42, 51, 49, 55, 58, 62, 60, 64, 68, 71, 73, 76, 78];
+  const days = ['1', '', '3', '', '5', '', '7', '', '9', '', '11', '', '13', '14'];
+  const subscores = [
+    { name: 'Sleep', score: 82, tone: 'high', delta: '↑ 14 vs baseline', signals: ['<6h sleep · 9 of 14 nights', 'WHOOP recovery <40%'] },
+    { name: 'Mood',  score: 71, tone: 'high', delta: '↑ 8',  signals: ['Self-report low · 12/14', 'Meeting overrun pattern'] },
+    { name: 'Stress', score: 76, tone: 'high', delta: '↑ 10', signals: ['Calendar density 87%', 'After-hours email +42%'] },
+    { name: 'Engagement', score: 38, tone: 'low', delta: '↓ 4', signals: ['Activity logs stable'] },
+    { name: 'Social', score: 44, tone: 'moderate', delta: 'stable', signals: ['Team check-ins normal'] },
+  ];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
+        <div>
+          <div className="type-eyebrow" style={{ marginBottom: 6 }}>JRISSI · Doctor-only</div>
+          <h1 className="type-h1">Mental health risk — A. Perera</h1>
+          <p className="type-body" style={{ marginTop: 6 }}>14-day score window · signals derived from passive &amp; self-report inputs</p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button kind="ghost" icon="info">Methodology</Button>
+          <Button kind="secondary" icon="download">Export</Button>
+          <Button kind="danger" icon="forward">Escalate to OH</Button>
+        </div>
+      </header>
+
+      <Banner tone="danger" title="JRISSI sustained High for 14 days.">Threshold for escalation is 14 consecutive days ≥ 67. Today is day 14.</Banner>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20 }}>
+        <Card>
+          <CardHeader eyebrow="Current score" title="Composite" />
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
+            <JrissiGauge score={78} size={200} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
+            <Stat label="7-day avg" value="74" tone="warning" />
+            <Stat label="30-day avg" value="61" tone="moderate" />
+            <Stat label="Highest" value="78" tone="danger" />
+            <Stat label="Trend" value="↑ 14" tone="danger" />
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader eyebrow="Trend · 14 days" title="Score over time"
+            action={<div style={{ display: 'flex', gap: 6 }}><Chip tone="neutral">7 d</Chip><Chip tone="info" dot>14 d</Chip><Chip tone="neutral">30 d</Chip></div>} />
+          <LineChart data={trend} width={600} height={220} xLabels={days} yMin={0} yMax={100}
+            refLines={[
+              { value: 34, label: 'Low threshold', color: 'var(--success)' },
+              { value: 67, label: 'High threshold', color: 'var(--danger)' },
+            ]} />
+        </Card>
+      </div>
+
+      <Card padding={0}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-1)' }}>
+          <div className="type-eyebrow">Sub-scores</div>
+          <div className="type-h3" style={{ marginTop: 2 }}>Component breakdown</div>
+        </div>
+        <div>
+          {subscores.map((s, i) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '180px 90px 1fr 1fr 40px', gap: 16, alignItems: 'center', padding: '14px 20px', borderTop: i === 0 ? 0 : '1px solid var(--border-1)' }}>
+              <div className="type-label" style={{ color: 'var(--fg-1)' }}>{s.name}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ font: '600 22px var(--font-mono)', color: 'var(--fg-1)' }}>{s.score}</span>
+                <Chip tone={s.tone} dot style={{ padding: '2px 8px' }}>{s.tone === 'high' ? 'High' : s.tone === 'moderate' ? 'Mod' : 'Low'}</Chip>
+              </div>
+              <div>
+                <Progress value={s.score} tone={s.tone === 'high' ? 'danger' : s.tone === 'moderate' ? 'warning' : 'success'} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {s.signals.map((sig, j) => <span key={j} className="type-caption">· {sig}</span>)}
+              </div>
+              <Icon name="chevron_right" size={20} style={{ color: 'var(--fg-3)' }} />
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <Card>
+          <CardHeader eyebrow="Suggested" title="Closed-loop interventions" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[
+              { icon: 'self_improvement', t: 'Refer to OH psychologist', d: 'Highest score driver: stress + mood. Auto-book within 48 h.', tone: 'danger' },
+              { icon: 'event_busy', t: 'Block 1h "deep work" daily', d: 'Recommend calendar protect via HR.', tone: 'warning' },
+              { icon: 'bedtime', t: 'Sleep hygiene module', d: 'Push notification to MRAS app this evening.', tone: 'info' },
+            ].map((s, i) => (
+              <div key={i} style={{ display: 'flex', gap: 12, padding: 12, borderRadius: 8, border: '1px solid var(--border-1)' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: `var(--${s.tone}-bg)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
+                  <Icon name={s.icon} size={20} style={{ color: `var(--${s.tone})` }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div className="type-label" style={{ color: 'var(--fg-1)' }}>{s.t}</div>
+                  <div className="type-caption" style={{ marginTop: 2 }}>{s.d}</div>
+                </div>
+                <Button kind="secondary" size="sm">Apply</Button>
+              </div>
+            ))}
+          </div>
+        </Card>
+        <Card>
+          <CardHeader eyebrow="Escalation timeline" title="Audit trail" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {[
+              { d: '14 May · 09:30', e: 'Threshold crossed for escalation (14d sustained High).', tone: 'danger' },
+              { d: '07 May · 16:12', e: 'Auto-notification sent · self-report wellness module.', tone: 'info' },
+              { d: '02 May · 09:00', e: 'JRISSI High first observed (score 71).', tone: 'warning' },
+              { d: '14 Apr · 11:00', e: 'Baseline established at 38 (annual check).', tone: 'success' },
+            ].map((e, i) => (
+              <div key={i} style={{ display: 'flex', gap: 12, padding: '10px 0' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: '0 0 auto' }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 999, background: `var(--${e.tone})` }} />
+                  {i < 3 && <span style={{ width: 1, flex: 1, background: 'var(--border-1)', marginTop: 4 }} />}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div className="type-mono" style={{ fontSize: 11, color: 'var(--fg-3)' }}>{e.d}</div>
+                  <div className="type-body-s" style={{ color: 'var(--fg-1)', marginTop: 2 }}>{e.e}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value, tone }) {
+  const map = { warning: 'var(--warning-fg)', danger: 'var(--danger-fg)', success: 'var(--success-fg)', moderate: 'var(--warning-fg)' };
+  return (
+    <div style={{ padding: '10px 12px', borderRadius: 8, background: 'var(--bg-canvas)', border: '1px solid var(--border-1)' }}>
+      <div className="type-caption" style={{ marginBottom: 2 }}>{label}</div>
+      <div className="type-clinical" style={{ fontSize: 18, color: map[tone] || 'var(--fg-1)' }}>{value}</div>
+    </div>
+  );
+}
+
+// ============================================================================
+// 4. PREDICTIVE FORECASTING
+// ============================================================================
+export function ForecastingView() {
+  const pollen = [22, 30, 28, 35, 48, 62, 78, 71, 64, 52, 41, 38, 32, 28];
+  const heat   = [28, 29, 30, 29, 31, 33, 35, 36, 34, 32, 31, 30, 29, 28];
+  const dayLbls = ['Mon', '', 'Wed', '', 'Fri', '', 'Sun', '', 'Tue', '', 'Thu', '', 'Sat', ''];
+  const forecasts = [
+    { icon: 'cloud', name: 'Pollen', risk: 'moderate', peakDay: 'Thu 14', peakLabel: 'Peak: 78 grains/m³', affected: 3, conditions: ['Allergic rhinitis', 'Asthma'], data: pollen, color: 'var(--warning)' },
+    { icon: 'thermostat', name: 'Heat-stress', risk: 'moderate', peakDay: 'Sat 16', peakLabel: 'Peak: 36 °C feels-like', affected: 2, conditions: ['Hypertension'], data: heat, color: 'var(--warning)' },
+    { icon: 'air', name: 'Air quality', risk: 'low', peakDay: 'Sun 17', peakLabel: 'PM2.5 stable', affected: 0, conditions: [], data: [22, 24, 23, 25, 24, 22, 23, 24, 22, 23, 24, 22, 23, 22], color: 'var(--success)' },
+    { icon: 'water_drop', name: 'Influenza signal', risk: 'low', peakDay: 'next week', peakLabel: 'Local incidence stable', affected: 0, conditions: [], data: [12, 14, 13, 12, 13, 14, 12, 11, 12, 13, 12, 12, 13, 12], color: 'var(--success)' },
+  ];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
+        <div>
+          <div className="type-eyebrow" style={{ marginBottom: 6 }}>Predictive layer · 14-day horizon</div>
+          <h1 className="type-h1">Forecasts</h1>
+          <p className="type-body" style={{ marginTop: 6 }}>Illness signals 3–14 days ahead. Cross-referenced with employee condition register.</p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button kind="ghost" icon="refresh">Last sync 12 min</Button>
+          <Button kind="secondary" icon="settings">Sources</Button>
+          <Button kind="primary" icon="campaign">Push pre-emptive alerts</Button>
+        </div>
+      </header>
+
+      <Card padding={0}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {[
+            { l: 'Watch events', v: '2', d: 'Pollen Thu · Heat Sat', tone: 'warning' },
+            { l: 'Employees flagged', v: '5', d: '3 allergy · 2 hypertension', tone: 'warning' },
+            { l: 'Pre-alerts queued', v: '5', d: 'Awaiting doctor approval', tone: 'info' },
+            { l: 'Forecast confidence', v: '0.86', d: 'Above threshold (0.7)', tone: 'success' },
+          ].map((s, i) => (
+            <div key={i} style={{ padding: '16px 20px', borderRight: i < 3 ? '1px solid var(--border-1)' : 0 }}>
+              <div className="type-eyebrow" style={{ marginBottom: 4 }}>{s.l}</div>
+              <div className="type-clinical" style={{ fontSize: 26, color: `var(--${s.tone}-fg)`, marginBottom: 4 }}>{s.v}</div>
+              <div className="type-caption">{s.d}</div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        {forecasts.map((f, i) => (
+          <Card key={i}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: f.risk === 'moderate' ? 'var(--warning-bg)' : 'var(--success-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name={f.icon} size={24} style={{ color: f.risk === 'moderate' ? 'var(--warning)' : 'var(--success)' }} />
+                </div>
+                <div>
+                  <div className="type-eyebrow" style={{ marginBottom: 2 }}>{f.peakDay} · {f.peakLabel}</div>
+                  <div className="type-h3">{f.name}</div>
+                </div>
+              </div>
+              <Chip tone={f.risk} dot>{f.risk === 'moderate' ? 'Watch' : 'Stable'}</Chip>
+            </div>
+            <LineChart data={f.data} width={460} height={120} color={f.color} xLabels={dayLbls} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--border-1)' }}>
+              <div className="type-body-s">
+                {f.affected > 0 ? (<>{f.affected} employees flagged · {f.conditions.join(', ')}</>) : <span style={{ color: 'var(--fg-3)' }}>No employees flagged for this signal.</span>}
+              </div>
+              {f.affected > 0 && <Button kind="ghost" size="sm" icon="open_in_new">Review</Button>}
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// 5. JRISSI / AI — workforce mental-health scores + AI predictions (/ai)
+// ============================================================================
+export function JrissiAiOverview({ onOpenPatient }) {
+  const dist = [
+    { d: 'Mon', l: 64, m: 24, h: 12 }, { d: 'Tue', l: 62, m: 26, h: 12 },
+    { d: 'Wed', l: 60, m: 27, h: 13 }, { d: 'Thu', l: 61, m: 25, h: 14 },
+    { d: 'Fri', l: 59, m: 27, h: 14 }, { d: 'Sat', l: 63, m: 25, h: 12 },
+    { d: 'Sun', l: 65, m: 24, h: 11 },
+  ];
+  const avgTrend = [36, 35, 37, 38, 36, 35, 34, 35, 34, 33, 34, 35, 34, 34];
+  const trendDays = ['1', '', '3', '', '5', '', '7', '', '9', '', '11', '', '13', '14'];
+  const watch = [
+    { id: 'E-002417', name: 'A. Perera', dept: 'Engineering', jrissi: 78, delta: '+12', days: 14, driver: 'Sleep · Stress', escalate: true },
+    { id: 'E-001602', name: 'M. Karunaratne', dept: 'Engineering', jrissi: 66, delta: '+9', days: 6, driver: 'Stress · Mood', escalate: false },
+    { id: 'E-002104', name: 'S. Fernando', dept: 'HR', jrissi: 52, delta: '+6', days: 3, driver: 'Mood', escalate: false },
+    { id: 'E-001890', name: 'P. Jayasinghe', dept: 'Operations', jrissi: 44, delta: '+2', days: 2, driver: 'Sleep', escalate: false },
+  ];
+  const predictions = [
+    { icon: 'psychology', tone: 'danger', conf: 0.91, title: 'A. Perera likely to breach escalation threshold today', body: '14-day sustained High projected to continue. Recommend OH referral within 48 h.', when: 'Now', pid: 'E-002417' },
+    { icon: 'groups', tone: 'warning', conf: 0.84, title: 'Engineering team stress rising into sprint deadline', body: '3 employees trending toward Moderate. Suggest workload check-in with team lead.', when: 'This week' },
+    { icon: 'cloud', tone: 'warning', conf: 0.86, title: 'Pollen peak Thursday — 3 allergy-history employees', body: 'Cross-referenced with JRISSI: 1 also shows elevated stress. Monitor closely.', when: 'Thu 14' },
+    { icon: 'bedtime', tone: 'info', conf: 0.78, title: 'Sleep-debt cluster in night-shift cohort', body: '6 employees averaging <6 h. Push sleep-hygiene module proactively.', when: '3–5 days' },
+  ];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
+        <div>
+          <div className="type-eyebrow" style={{ marginBottom: 6 }}>JRISSI / AI · doctor-only · workforce</div>
+          <h1 className="type-h1">Mental health &amp; AI predictions</h1>
+          <p className="type-body" style={{ marginTop: 6 }}>Population-level JRISSI signal with the predictive model\u2019s next-best-actions. 4 employees on the watchlist · 1 escalation due.</p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button kind="ghost" icon="info">Model card</Button>
+          <Button kind="secondary" icon="download">Export</Button>
+          <Button kind="primary" icon="campaign">Push interventions</Button>
+        </div>
+      </header>
+
+      {/* Model status strip */}
+      <Card padding={0}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)' }}>
+          {[
+            { l: 'Workforce avg JRISSI', v: '34', d: '↓ 2 vs Q1', tone: 'success', icon: 'monitoring' },
+            { l: 'On watchlist', v: '15', d: '4 High · 11 Moderate', tone: 'warning', icon: 'visibility' },
+            { l: 'Escalations due', v: '1', d: 'A. Perera · 14d', tone: 'danger', icon: 'priority_high' },
+            { l: 'Model confidence', v: '0.86', d: 'Above threshold 0.70', tone: 'success', icon: 'auto_awesome' },
+            { l: 'Last inference', v: '12m', d: 'ago · hourly cadence', tone: 'info', icon: 'schedule' },
+          ].map((s, i) => (
+            <div key={i} style={{ padding: '16px 18px', borderRight: i < 4 ? '1px solid var(--border-1)' : 0 }}>
+              <div className="type-eyebrow" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <Icon name={s.icon} size={20} style={{ color: 'var(--primary)', fontSize: 16 }} />{s.l}
+              </div>
+              <div className="type-clinical" style={{ fontSize: 26, color: `var(--${s.tone}-fg)`, marginBottom: 2 }}>{s.v}</div>
+              <div className="type-caption">{s.d}</div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 20 }}>
+        {/* AI predictions feed */}
+        <Card padding={0}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div className="type-eyebrow" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icon name="auto_awesome" size={20} style={{ color: 'var(--primary)', fontSize: 15 }} />Predictive model
+              </div>
+              <div className="type-h3" style={{ marginTop: 2 }}>Next-best-actions</div>
+            </div>
+            <Chip tone="info" dot>4 active</Chip>
+          </div>
+          <div>
+            {predictions.map((p, i) => (
+              <div key={i} style={{ display: 'flex', gap: 14, padding: '16px 20px', borderTop: i === 0 ? 0 : '1px solid var(--border-1)' }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: `var(--${p.tone}-bg)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
+                  <Icon name={p.icon} size={24} style={{ color: `var(--${p.tone})` }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                    <span className="type-label" style={{ color: 'var(--fg-1)' }}>{p.title}</span>
+                    <span className="type-caption" style={{ flex: '0 0 auto' }}>{p.when}</span>
+                  </div>
+                  <div className="type-body-s" style={{ marginTop: 4 }}>{p.body}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, maxWidth: 180 }}>
+                      <span className="type-caption" style={{ flex: '0 0 auto' }}>Confidence</span>
+                      <div style={{ flex: 1, height: 5, borderRadius: 999, background: 'var(--bg-hover)', overflow: 'hidden' }}>
+                        <div style={{ width: `${p.conf * 100}%`, height: '100%', background: `var(--${p.tone})`, borderRadius: 999 }} />
+                      </div>
+                      <span className="type-mono" style={{ fontSize: 11, color: 'var(--fg-2)' }}>{p.conf.toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+                      <Button kind="ghost" size="sm">Dismiss</Button>
+                      <Button kind="secondary" size="sm" icon={p.pid ? 'open_in_new' : 'check'}
+                        onClick={() => p.pid && onOpenPatient && onOpenPatient(p.pid)}>
+                        {p.pid ? 'Open record' : 'Apply'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Right rail: distribution + trend */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <Card>
+            <CardHeader eyebrow="Workforce · today" title="JRISSI distribution" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+              <Donut size={120} thickness={16} segments={[
+                { value: 968, color: 'var(--risk-low)' },
+                { value: 271, color: 'var(--risk-moderate)' },
+                { value: 45, color: 'var(--risk-high)' },
+              ]} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
+                {[
+                  { c: 'var(--risk-low)', l: 'Low', v: '968', p: '75%' },
+                  { c: 'var(--risk-moderate)', l: 'Moderate', v: '271', p: '21%' },
+                  { c: 'var(--risk-high)', l: 'High', v: '45', p: '4%' },
+                ].map((r, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 3, background: r.c }} />
+                    <span className="type-body-s" style={{ flex: 1, color: 'var(--fg-2)' }}>{r.l}</span>
+                    <span className="type-mono" style={{ color: 'var(--fg-1)' }}>{r.v}</span>
+                    <span className="type-caption" style={{ width: 36, textAlign: 'right' }}>{r.p}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+          <Card>
+            <CardHeader eyebrow="14-day" title="Avg score trend"
+              action={<Chip tone="success" dot>Stable</Chip>} />
+            <LineChart data={avgTrend} width={420} height={150} xLabels={trendDays} yMin={0} yMax={100}
+              refLines={[{ value: 34, label: 'Low threshold', color: 'var(--success)' }]} />
+          </Card>
+        </div>
+      </div>
+
+      {/* Watchlist table */}
+      <Card padding={0}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div className="type-eyebrow">Doctor-only</div>
+            <div className="type-h3" style={{ marginTop: 2 }}>JRISSI watchlist · AI-ranked</div>
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <Chip tone="high" dot>High · 4</Chip>
+            <Chip tone="moderate" dot>Moderate · 11</Chip>
+          </div>
+        </div>
+        <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
+          <thead>
+            <tr>
+              {['Employee', 'JRISSI', '14d', 'Δ', 'Sustained', 'Top drivers (AI)', ''].map((h, i) => (
+                <th key={i} style={{ font: '500 11px var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--fg-3)', textAlign: i === 1 || i === 3 ? 'right' : 'left', padding: '12px 16px', borderBottom: '1px solid var(--border-1)', background: 'var(--bg-canvas)' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {watch.map((p, i) => {
+              const tone = p.jrissi < 34 ? 'low' : p.jrissi < 67 ? 'moderate' : 'high';
+              const spark = [p.jrissi - 18, p.jrissi - 14, p.jrissi - 12, p.jrissi - 9, p.jrissi - 6, p.jrissi - 3, p.jrissi];
+              return (
+                <tr key={i} onClick={() => onOpenPatient && onOpenPatient(p.id)} style={{ cursor: 'pointer' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = ''}>
+                  <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-1)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <Avatar name={p.name} size={30} color="var(--slate-500)" />
+                      <div>
+                        <div className="type-label" style={{ color: 'var(--fg-1)' }}>{p.name}</div>
+                        <div className="type-caption">{p.id} · {p.dept}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-1)', textAlign: 'right' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ font: '600 16px var(--font-mono)', color: 'var(--fg-1)' }}>{p.jrissi}</span>
+                      <Chip tone={tone} dot style={{ padding: '2px 8px' }}>{tone === 'high' ? 'High' : tone === 'moderate' ? 'Mod' : 'Low'}</Chip>
+                    </div>
+                  </td>
+                  <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-1)' }}>
+                    <Sparkline data={spark} width={80} height={26} color={tone === 'high' ? 'var(--danger)' : tone === 'moderate' ? 'var(--warning)' : 'var(--success)'} />
+                  </td>
+                  <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-1)', textAlign: 'right' }}>
+                    <span className="type-mono" style={{ color: 'var(--danger-fg)' }}>↑ {p.delta.replace('+', '')}</span>
+                  </td>
+                  <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-1)' }}>
+                    <span className="type-mono" style={{ color: p.days >= 14 ? 'var(--danger-fg)' : 'var(--fg-2)' }}>{p.days} d</span>
+                    {p.days >= 14 && <Chip tone="danger" style={{ padding: '2px 8px', marginLeft: 6 }}>Escalate</Chip>}
+                  </td>
+                  <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-1)' }}>
+                    <span className="type-body-s" style={{ color: 'var(--fg-2)' }}>{p.driver}</span>
+                  </td>
+                  <td style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-1)' }}>
+                    <Icon name="chevron_right" size={20} style={{ color: 'var(--fg-3)' }} />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </Card>
+    </div>
+  );
+}
+
+

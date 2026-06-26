@@ -1,0 +1,39 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Chip" subtitle="Risk + status pills" viewport="640x200" -->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Chip</title>
+  <link rel="stylesheet" href="../../colors_and_type.css" />
+  <style>
+    body { margin: 0; padding: 24px; background: var(--surface-1); }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+    .lbl { font: 600 11px var(--font-sans); color: var(--fg-3); letter-spacing: .06em; text-transform: uppercase; width: 64px; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="../../_ds_bundle.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const { Chip } = window.MRASDesignSystem_019e16;
+    const h = React.createElement;
+    const Row = (label, ...kids) => h('div', { className: 'row' }, h('span', { className: 'lbl' }, label), ...kids);
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      h(React.Fragment, null,
+        Row('JRISSI',
+          h(Chip, { tone: 'low', dot: true }, 'Low · 19'),
+          h(Chip, { tone: 'moderate', dot: true }, 'Moderate · 52'),
+          h(Chip, { tone: 'high', dot: true }, 'High · 78')),
+        Row('Status',
+          h(Chip, { tone: 'success', icon: 'check_circle' }, 'Healthy'),
+          h(Chip, { tone: 'warning', icon: 'schedule' }, 'Expires 14d'),
+          h(Chip, { tone: 'danger', icon: 'priority_high' }, 'Stock-out'),
+          h(Chip, { tone: 'info', icon: 'info' }, 'Pre-visit ready'),
+          h(Chip, { tone: 'neutral' }, 'Draft')),
+      )
+    );
+  </script>
+</body>
+</html>

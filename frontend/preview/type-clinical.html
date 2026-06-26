@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- @dsCard group="Brand" name="Type — clinical values" subtitle="Mono tabular numerals with units" viewport="700x160" -->
+<html><head><meta charset="utf-8"><title>Type — clinical / mono</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 18px 20px; background: var(--surface-1); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  .cell { border: 1px solid var(--border-1); border-radius: 10px; padding: 14px 16px; background: var(--bg-canvas); }
+  .label { font: 600 11px var(--font-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); margin-bottom: 6px; }
+  .val { font: 500 26px var(--font-mono); color: var(--fg-1); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .unit { font: 400 13px var(--font-sans); color: var(--fg-3); margin-left: 4px; }
+  .delta { font: 500 12px var(--font-mono); margin-top: 4px; }
+  .up { color: var(--success-fg); }
+  .down { color: var(--danger-fg); }
+</style></head>
+<body>
+  <div class="grid">
+    <div class="cell"><div class="label">Heart rate</div><div class="val">72<span class="unit">bpm</span></div><div class="delta down">↓ 3 vs avg</div></div>
+    <div class="cell"><div class="label">Blood pressure</div><div class="val">120/80<span class="unit">mmHg</span></div><div class="delta up">↑ 4 vs avg</div></div>
+    <div class="cell"><div class="label">JRISSI</div><div class="val">38</div><div class="delta up">↑ 6 · 14 d</div></div>
+    <div class="cell"><div class="label">Steps</div><div class="val">7,432</div><div class="delta down">↓ 12% w/w</div></div>
+  </div>
+</body></html>

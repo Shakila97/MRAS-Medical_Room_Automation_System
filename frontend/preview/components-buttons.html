@@ -1,0 +1,40 @@
+<!doctype html>
+<!-- @dsCard group="Brand" name="Buttons" subtitle="Primary · secondary · ghost · danger" viewport="700x220" -->
+<html><head><meta charset="utf-8"><title>Buttons</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 20px; background: var(--surface-1); }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+  .btn { font: 500 14px var(--font-sans); border: 0; border-radius: 8px; padding: 0 16px; height: 36px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: background var(--dur-micro) var(--ease-std); }
+  .btn.primary { background: var(--primary); color: var(--fg-on-primary); }
+  .btn.primary:hover { background: var(--primary-hover); }
+  .btn.secondary { background: var(--surface-1); color: var(--fg-1); border: 1px solid var(--border-2); }
+  .btn.secondary:hover { background: var(--bg-hover); }
+  .btn.ghost { background: transparent; color: var(--primary); }
+  .btn.ghost:hover { background: var(--primary-tint); }
+  .btn.danger { background: var(--danger); color: #fff; }
+  .btn.disabled { opacity: .4; pointer-events: none; }
+  .btn.sm { height: 28px; font-size: 13px; padding: 0 12px; border-radius: 6px; }
+  .btn.lg { height: 44px; font-size: 15px; padding: 0 20px; border-radius: 10px; }
+  .label { font: 600 11px var(--font-sans); color: var(--fg-3); letter-spacing: .06em; text-transform: uppercase; width: 80px; }
+</style></head>
+<body>
+  <div class="row"><span class="label">Primary</span>
+    <button class="btn primary sm">Save</button>
+    <button class="btn primary">Save consultation</button>
+    <button class="btn primary lg"><span class="ms is-20">add</span>New patient</button>
+    <button class="btn primary disabled">Save</button>
+  </div>
+  <div class="row"><span class="label">Secondary</span>
+    <button class="btn secondary sm">Cancel</button>
+    <button class="btn secondary">Cancel</button>
+    <button class="btn secondary"><span class="ms is-20">download</span>Export CSV</button>
+  </div>
+  <div class="row"><span class="label">Ghost</span>
+    <button class="btn ghost">View briefing</button>
+    <button class="btn ghost"><span class="ms is-20">arrow_forward</span>Open record</button>
+  </div>
+  <div class="row"><span class="label">Danger</span>
+    <button class="btn danger"><span class="ms is-20">priority_high</span>Escalate</button>
+  </div>
+</body></html>

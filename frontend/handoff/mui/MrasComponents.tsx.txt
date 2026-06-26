@@ -1,0 +1,146 @@
+// MRAS-specific components — drop-in patterns the design system uses heavily
+// that aren't in MUI by default. Each is a thin wrapper over MUI primitives.
+
+import { Box, Chip, Paper, Stack, Typography, useTheme } from '@mui/material';
+import type { SxProps, Theme } from '@mui/material/styles';
+
+// =========================================================================
+// JrissiChip — the doctor-only mental-health risk pill.
+// =========================================================================
+export type JrissiTone = 'low' | 'moderate' | 'high';
+
+export function JrissiChip({ score, label }: { score: number; label?: string }) {
+  const theme = useTheme();
+  const tone: JrissiTone = score < 34 ? 'low' : score < 67 ? 'moderate' : 'high';
+  const t = theme.mras.risk[tone];
+  return (
+    <Chip
+      size="small"
+      label={label ?? `${tone[0].toUpperCase() + tone.slice(1)} · ${score}`}
+      sx={{
+        bgcolor: t.bg,
+        color: t.fg,
+        fontWeight: 500,
+        '& .MuiChip-icon': { color: t.main },
+      }}
+      icon={<Box sx={{ width: 6, height: 6, borderRadius: 999, bgcolor: t.main, ml: 1, mr: -0.5 }} />}
+    />
+  );
+}
+
+// =========================================================================
+// StatTile — clinical readout cell. Used on every dashboard.
+// =========================================================================
+export function StatTile({
+  icon, label, value, unit, delta, deltaTone = 'neutral',
+}: {
+  icon?: React.ReactNode;
+  label: string;
+  value: string | number;
+  unit?: string;
+  delta?: string;
+  deltaTone?: 'good' | 'bad' | 'neutral';
+}) {
+  const theme = useTheme();
+  const deltaColor =
+    deltaTone === 'good' ? theme.palette.success.dark
+    : deltaTone === 'bad' ? theme.palette.error.dark
+    : theme.palette.text.secondary;
+  return (
+    <Stack sx={{ p: '14px 16px', minWidth: 0 }} spacing={0.5}>
+      <Typography variant="overline" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.75 }}>
+        {icon}
+        {label}
+      </Typography>
+      <Typography sx={{ fontFamily: "'IBM Plex Mono', monospace", fontVariantNumeric: 'tabular-nums', fontSize: 22, fontWeight: 500, letterSpacing: '-0.01em' }}>
+        {value}
+        {unit && <Typography component="span" sx={{ fontFamily: 'inherit', fontSize: 12, color: 'text.secondary', ml: 0.5 }}>{unit}</Typography>}
+      </Typography>
+      {delta && (
+        <Typography sx={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 500, color: deltaColor }}>
+          {delta}
+        </Typography>
+      )}
+    </Stack>
+  );
+}
+
+// =========================================================================
+// JrissiGauge — circular SVG dial. Doctor-only.
+// =========================================================================
+export function JrissiGauge({ score, size = 160 }: { score: number; size?: number }) {
+  const theme = useTheme();
+  const tone: JrissiTone = score < 34 ? 'low' : score < 67 ? 'moderate' : 'high';
+  const color = theme.mras.risk[tone].main;
+  const r = size / 2 - 14;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - score / 100);
+  return (
+    <Box sx={{ position: 'relative', width: size, height: size, flex: '0 0 auto' }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={size/2} cy={size/2} r={r} stroke={theme.palette.divider} strokeWidth="12" fill="none"/>
+        <circle cx={size/2} cy={size/2} r={r} stroke={color} strokeWidth="12" fill="none" strokeLinecap="round"
+          strokeDasharray={circ} strokeDashoffset={offset}/>
+      </svg>
+      <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <Typography sx={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 34, fontWeight: 600, lineHeight: 1 }}>{score}</Typography>
+        <Typography sx={{ fontSize: 10, fontWeight: 500, color, textTransform: 'uppercase', letterSpacing: '0.08em', mt: 0.5 }}>
+          {tone}
+        </Typography>
+      </Box>
+    </Box>
+  );
+}
+
+// =========================================================================
+// SectionCard — bordered card with header row + body slot. The most-used
+// surface in MRAS. Wrap MUI's <Card> + <CardHeader> + <CardContent> with
+// MRAS defaults (border, no shadow, eyebrow case).
+// =========================================================================
+export function SectionCard({
+  eyebrow, title, action, children, padding, sx,
+}: {
+  eyebrow?: string;
+  title?: string;
+  action?: React.ReactNode;
+  children?: React.ReactNode;
+  padding?: number | string;
+  sx?: SxProps<Theme>;
+}) {
+  return (
+    <Paper sx={{ border: theme => `1px solid ${theme.palette.divider}`, borderRadius: 2.5, ...sx }}>
+      {(eyebrow || title || action) && (
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ p: '16px 20px', borderBottom: padding === 0 ? theme => `1px solid ${theme.palette.divider}` : 'none' }}>
+          <Box>
+            {eyebrow && <Typography variant="overline" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>{eyebrow}</Typography>}
+            {title && <Typography variant="h4">{title}</Typography>}
+          </Box>
+          {action}
+        </Stack>
+      )}
+      <Box sx={{ p: padding === 0 ? 0 : (padding ?? '20px') }}>
+        {children}
+      </Box>
+    </Paper>
+  );
+}
+
+// =========================================================================
+// RoleAvatar — accent-coloured avatar for role attribution
+// =========================================================================
+export function RoleAvatar({ name, role, size = 32 }: { name: string; role: keyof Theme['mras']['role']; size?: number }) {
+  const theme = useTheme();
+  const initials = name.split(' ').map(s => s[0]).slice(0, 2).join('').toUpperCase();
+  return (
+    <Box sx={{
+      width: size, height: size, borderRadius: 999,
+      bgcolor: theme.mras.role[role],
+      color: '#fff',
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      fontWeight: 600, fontSize: Math.round(size * 0.4),
+      flex: '0 0 auto',
+    }}>
+      {initials}
+    </Box>
+  );
+}

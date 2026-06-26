@@ -6,10 +6,12 @@ from functools import lru_cache
 class Settings(BaseSettings):
     # ── App ─────────────────────────────────────────────────────
     APP_ENV: str = "development"
-    FRONTEND_URL: str = "http://localhost:3000"
+    FRONTEND_URL: str = "http://localhost:5173"
 
     # ── Database ─────────────────────────────────────────────────
-    DATABASE_URL: str = "postgresql+asyncpg://mras_user:mras_pass@localhost:5432/mras_db"
+    # Dev default: SQLite (no external DB needed)
+    # Prod: set DATABASE_URL=postgresql+asyncpg://user:pass@host/mras_db
+    DATABASE_URL: str = "sqlite+aiosqlite:///./mras.db"
 
     # ── Security ─────────────────────────────────────────────────
     SECRET_KEY: str = "dev-secret-key-change-in-production"
@@ -17,9 +19,29 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    # ── Feature Flags ────────────────────────────────────────────
+    # ── Anthropic Claude (AI briefing) ────────────────────────────
+    ANTHROPIC_API_KEY: str = ""
+    CLAUDE_MODEL: str = "claude-opus-4-5"
+
+    # ── Notifications ─────────────────────────────────────────────
+    TWILIO_ACCOUNT_SID: str = ""
+    TWILIO_AUTH_TOKEN: str = ""
+    SENDGRID_API_KEY: str = ""
+
+    # ── Feature Flags ─────────────────────────────────────────────
     ENABLE_ML_PREDICTIONS: bool = True
-    ENABLE_STREAM2_SENSORS: bool = True
+    ENABLE_AI_BRIEFING: bool = True
+    ENABLE_NOTIFICATIONS: bool = True
+
+    # ── JRISSI Weights ────────────────────────────────────────────
+    JRISSI_W_MENTAL_HISTORY: float = 0.25
+    JRISSI_W_SLEEP: float = 0.20
+    JRISSI_W_EXERCISE: float = 0.15
+    JRISSI_W_VITALS_ANOMALY: float = 0.20
+    JRISSI_W_CONSULT_FREQ: float = 0.10
+    JRISSI_W_MEDICATION: float = 0.10
+    JRISSI_ESCALATION_THRESHOLD: int = 67
+    JRISSI_ESCALATION_SUSTAINED_DAYS: int = 14
 
     @field_validator("SECRET_KEY")
     @classmethod
