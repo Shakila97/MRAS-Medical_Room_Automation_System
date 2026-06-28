@@ -38,6 +38,27 @@ async def drugs(
 
 # ── Prescription CRUD ─────────────────────────────────────────────────────────
 
+@router.get("/prescriptions/me", response_model=List[PrescriptionRead], summary="My active prescriptions")
+async def my_prescriptions(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    from sqlmodel import select
+    from src.models import Patient, Prescription
+    
+    patient_result = await db.execute(select(Patient).where(Patient.user_id == user.id))
+    patient = patient_result.scalar_one_or_none()
+    if not patient:
+        return []
+
+    result = await db.execute(
+        select(Prescription)
+        .where(Prescription.patient_id == patient.id)
+        .order_by(Prescription.signed_at.desc())
+    )
+    return result.scalars().all()
+
+
 @router.post("/prescriptions", response_model=PrescriptionRead, status_code=201,
              summary="Create a draft prescription")
 async def create(
