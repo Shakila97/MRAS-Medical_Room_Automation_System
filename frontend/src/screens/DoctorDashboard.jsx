@@ -1,16 +1,28 @@
-﻿/* eslint-disable */
-import React from 'react';
+/* eslint-disable */
+import React, { useState, useEffect } from 'react';
+import { api } from '../api/client';
 import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
 import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
-export const PATIENTS = [
-  { id: 'E-002417', name: 'A. Perera',     dept: 'Engineering', jrissi: 78, jr_delta: '+12', last: '2 d ago', flags: ['JRISSI High', 'Asthma'] },
-  { id: 'E-002104', name: 'S. Fernando',   dept: 'HR',          jrissi: 52, jr_delta: '+6',  last: '5 d ago', flags: ['Allergy watch'] },
-  { id: 'E-001998', name: 'D. Anuradha',   dept: 'Engineering', jrissi: 31, jr_delta: '-3',  last: '1 d ago', flags: [] },
-  { id: 'E-001890', name: 'P. Jayasinghe', dept: 'Operations',  jrissi: 44, jr_delta: '+2',  last: '3 d ago', flags: ['Hypertension'] },
-  { id: 'E-001705', name: 'K. Silva',      dept: 'Finance',     jrissi: 19, jr_delta: '-1',  last: 'today',   flags: [] },
-];
-
 export function DoctorDashboard({ onOpenPatient }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/dashboard/doctor')
+      .then(res => {
+        setData(res.data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to load dashboard:', err);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading || !data) return <div style={{ padding: 40 }}><Skeleton rows={10} /></div>;
+
+  const { stats, patients } = data;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16 }}>
@@ -32,13 +44,7 @@ export function DoctorDashboard({ onOpenPatient }) {
       {/* Top stat strip */}
       <Card padding={0}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', borderRadius: 10, overflow: 'hidden' }}>
-          {[
-            { icon: 'groups',          label: 'Active employees',  value: '1,284' },
-            { icon: 'event_available', label: 'Today\'s queue',     value: '12', delta: '3 pre-visit briefings ready', deltaTone: 'good' },
-            { icon: 'psychology',      label: 'JRISSI High',        value: '4',  delta: '+1 vs last week', deltaTone: 'bad' },
-            { icon: 'insights',        label: 'Forecast watch',     value: '3',  delta: 'Pollen rising Thu',  deltaTone: 'neutral' },
-            { icon: 'priority_high',   label: 'Escalations',        value: '1' },
-          ].map((s, i) => (
+          {stats.map((s, i) => (
             <div key={i} style={{ borderRight: i < 4 ? '1px solid var(--border-1)' : 0 }}>
               <StatTile {...s} />
             </div>
@@ -60,7 +66,7 @@ export function DoctorDashboard({ onOpenPatient }) {
             </div>
           </div>
           <div>
-            {PATIENTS.map((p, i) => {
+            {patients.map((p, i) => {
               const tone = p.jrissi < 34 ? 'low' : p.jrissi < 67 ? 'moderate' : 'high';
               return (
                 <div key={p.id} onClick={() => onOpenPatient(p.id)} style={{
