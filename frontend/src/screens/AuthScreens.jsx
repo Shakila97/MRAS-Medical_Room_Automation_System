@@ -151,12 +151,16 @@ export function MrasLogin() {
 // SIGN UP (create account)
 // ============================================================================
 export function MrasSignUp() {
+  const navigate = useNavigate();
   const [first, setFirst] = React.useState('');
   const [last, setLast] = React.useState('');
+  const [empId, setEmpId] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [pw, setPw] = React.useState('');
   const [confirm, setConfirm] = React.useState('');
   const [agree, setAgree] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState('');
 
   // Live validation
   const emailValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
@@ -176,6 +180,28 @@ export function MrasSignUp() {
   ][strength];
   const match = confirm.length > 0 && pw === confirm;
   const canSubmit = first && last && emailValid && strength === 4 && match && agree;
+
+  const handleRegister = async () => {
+    if (!canSubmit) return;
+    setLoading(true);
+    setError('');
+    try {
+      await api.post('/auth/register', {
+        email,
+        password: pw,
+        full_name: `${first} ${last}`.trim(),
+        employee_id: empId || null
+      });
+      // Optionally login automatically, or redirect
+      navigate('/login');
+      alert("Registration successful! Please log in.");
+    } catch (err) {
+      console.error(err);
+      setError(err?.response?.data?.detail || "Failed to register. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', height: '100%', minHeight: 720, background: 'var(--bg-canvas)' }}>
@@ -244,8 +270,11 @@ export function MrasSignUp() {
               <Input label="First name" value={first} onChange={setFirst} placeholder="Bandara" required />
               <Input label="Last name" value={last} onChange={setLast} placeholder="Karunaratne" required />
             </div>
-            <Input label="Work email" value={email} onChange={setEmail} leading="mail" placeholder="you@company.com"
-              required error={email.length > 0 && !emailValid ? 'Enter a valid email address' : ''} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 12 }}>
+              <Input label="Work email" value={email} onChange={setEmail} leading="mail" placeholder="you@company.com"
+                required error={email.length > 0 && !emailValid ? 'Enter a valid email address' : ''} />
+              <Input label="Employee ID" value={empId} onChange={setEmpId} placeholder="Optional" />
+            </div>
 
             <div>
               <Input label="Password" value={pw} onChange={setPw} leading="lock" trailing="visibility" type="password" required />
@@ -282,10 +311,17 @@ export function MrasSignUp() {
               </span>
             </label>
 
-            <Button kind="primary" size="lg" icon="arrow_forward"
-              disabled={!canSubmit}
-              style={{ width: '100%', justifyContent: 'center', height: 44, marginTop: 4 }}>
-              Create account
+            {error && (
+              <div style={{ padding: '10px 14px', borderRadius: 8, background: 'var(--danger-tint, #fef2f2)', border: '1px solid var(--danger, #ef4444)', color: 'var(--danger, #dc2626)', font: '500 13px var(--font-sans)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Icon name="error" size={16} style={{ flexShrink: 0 }} />
+                {error}
+              </div>
+            )}
+
+            <Button kind="primary" size="lg" icon={loading ? undefined : "arrow_forward"} onClick={handleRegister}
+              disabled={!canSubmit || loading}
+              style={{ width: '100%', justifyContent: 'center', height: 44, marginTop: 4, opacity: (!canSubmit || loading) ? 0.6 : 1 }}>
+              {loading ? 'Creating account...' : 'Create account'}
             </Button>
           </div>
 

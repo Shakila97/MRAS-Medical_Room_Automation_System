@@ -21,7 +21,7 @@ export function DoctorDashboard({ onOpenPatient }) {
 
   if (loading || !data) return <div style={{ padding: 40 }}><Skeleton rows={10} /></div>;
 
-  const { stats, patients } = data;
+  const { stats, patients, queue = [] } = data;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -83,7 +83,7 @@ export function DoctorDashboard({ onOpenPatient }) {
                   <Avatar name={p.name} size={32} color="var(--slate-500)" />
                   <div>
                     <div className="type-label" style={{ color: 'var(--fg-1)' }}>{p.name}</div>
-                    <div className="type-caption">{p.id} · {p.dept}</div>
+                    <div className="type-caption">{p.employee_id} · {p.dept}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ font: '500 16px var(--font-mono)', color: 'var(--fg-1)' }}>{p.jrissi}</span>
@@ -132,22 +132,22 @@ export function DoctorDashboard({ onOpenPatient }) {
 
           <Card>
             <CardHeader eyebrow="Today" title="Next consultations" />
-            {[
-              { t: '09:30', n: 'A. Perera',    r: 'Pre-visit briefing ready', icon: 'description' },
-              { t: '10:15', n: 'S. Fernando',  r: 'Follow-up · allergy',       icon: 'event_repeat' },
-              { t: '11:00', n: 'K. Silva',     r: 'Routine check-in',          icon: 'event_available' },
-              { t: '11:45', n: 'P. Jayasinghe', r: 'BP review',                icon: 'monitor_heart' },
-            ].map((q, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: i === 0 ? 0 : '1px dashed var(--border-1)' }}>
+            {queue.length > 0 ? queue.map((q, i) => (
+              <div key={q.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: i === 0 ? 0 : '1px dashed var(--border-1)' }}>
                 <span style={{ font: '500 13px var(--font-mono)', color: 'var(--fg-1)', width: 44 }}>{q.t}</span>
                 <Avatar name={q.n} size={28} color="var(--slate-500)" />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="type-label" style={{ color: 'var(--fg-1)' }}>{q.n}</div>
+                  <div className="type-label" style={{ color: 'var(--fg-1)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {q.n}
+                    {q.status === 'CHECKED_IN' && <Chip tone="success" style={{ padding: '0 6px', fontSize: 10 }}>Waiting</Chip>}
+                  </div>
                   <div className="type-caption">{q.r}</div>
                 </div>
-                <Icon name={q.icon} size={20} style={{ color: 'var(--primary)' }} />
+                <Button kind="ghost" size="sm" icon="chevron_right" onClick={() => onOpenPatient(q.patient_id)}>Open</Button>
               </div>
-            ))}
+            )) : (
+              <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--fg-3)' }}>No appointments today.</div>
+            )}
           </Card>
         </div>
       </div>

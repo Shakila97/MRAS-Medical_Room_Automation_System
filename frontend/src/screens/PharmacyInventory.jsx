@@ -1,21 +1,37 @@
-﻿/* eslint-disable */
-import React from 'react';
+/* eslint-disable */
+import React, { useState, useEffect } from 'react';
+import { api } from '../api/client';
 import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
 import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
-const STOCK = [
-  { name: 'Paracetamol 500 mg',  brand: 'Panadol',      sku: 'DRG-0421', qty: 1240, unit: 'tab', expiry: '12 Aug 2026', batch: 'P-2026-08-A', tone: 'low' },
-  { name: 'Cetirizine 10 mg',    brand: 'Zyrtec',       sku: 'DRG-0118', qty: 312,  unit: 'tab', expiry: '03 Jun 2026', batch: 'C-2026-06-B', tone: 'moderate' },
-  { name: 'Amlodipine 5 mg',     brand: 'Norvasc',      sku: 'DRG-0306', qty: 84,   unit: 'tab', expiry: '24 May 2026', batch: 'A-2026-05-B', tone: 'high' },
-  { name: 'Salbutamol inhaler',  brand: 'Ventolin',     sku: 'DRG-0552', qty: 42,   unit: 'pcs', expiry: '14 Nov 2026', batch: 'S-2026-11-A', tone: 'low' },
-  { name: 'Metformin 500 mg',    brand: 'Glucophage',   sku: 'DRG-0233', qty: 0,    unit: 'tab', expiry: '—',          batch: '—',           tone: 'high', oos: true },
-  { name: 'ORS sachets',         brand: 'Jeevani',      sku: 'DRG-0014', qty: 540,  unit: 'sct', expiry: '02 Mar 2027', batch: 'O-2027-03-A', tone: 'low' },
-  { name: 'Ibuprofen 400 mg',    brand: 'Brufen',       sku: 'DRG-0089', qty: 188,  unit: 'tab', expiry: '20 Jul 2026', batch: 'I-2026-07-A', tone: 'moderate' },
-  { name: 'Loratadine 10 mg',    brand: 'Claritin',     sku: 'DRG-0122', qty: 96,   unit: 'tab', expiry: '08 Sep 2026', batch: 'L-2026-09-A', tone: 'low' },
-];
 
 export function PharmacyInventory() {
-  const [filter, setFilter] = React.useState('all');
-  const filtered = STOCK.filter(s => filter === 'all' ? true : s.tone === filter);
+  const [filter, setFilter] = useState('all');
+  const [stock, setStock] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/inventory').then(res => {
+      setStock(res.data.map(item => ({
+        name: item.drug_name,
+        brand: '',
+        sku: `DRG-${item.drug_id}`,
+        qty: item.total_quantity,
+        unit: item.unit,
+        expiry: new Date(item.updated_at).toLocaleDateString(),
+        batch: '-',
+        tone: item.status === 'critical' ? 'high' : item.status === 'low' ? 'moderate' : 'low',
+        oos: item.total_quantity === 0
+      })));
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
+  }, []);
+
+  const filtered = stock.filter(s => filter === 'all' ? true : s.tone === filter);
+
+  if (loading) return <div style={{ padding: 40 }}><Skeleton rows={10} /></div>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

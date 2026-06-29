@@ -2,6 +2,7 @@
 // MRAS Dashboard chrome — app bar, sidebar, role switcher
 import React from 'react';
 import { Icon, Avatar } from './widgets.jsx';
+import { useAuth } from './context/AuthContext';
 
 export const NAV_BY_ROLE = {
   doctor: [
@@ -111,6 +112,7 @@ export function AppBar({ role, onRoleChange, onMenu }) {
 }
 
 export function Sidebar({ role, screen, onNavigate, collapsed }) {
+  const { logout } = useAuth();
   const items = NAV_BY_ROLE[role];
   const meta = ROLE_META[role];
   const w = collapsed ? 'var(--sidebar-w-c)' : 'var(--sidebar-w)';
@@ -167,7 +169,7 @@ export function Sidebar({ role, screen, onNavigate, collapsed }) {
       </nav>
 
       {/* Footer */}
-      <div style={{ padding: 12, borderTop: '1px solid var(--border-1)' }}>
+      <div style={{ padding: 12, borderTop: '1px solid var(--border-1)', display: 'flex', flexDirection: 'column', gap: 4 }}>
         <button style={{
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start', gap: 10,
           padding: collapsed ? 10 : '10px 12px', border: 0, borderRadius: 8, background: 'transparent', cursor: 'pointer',
@@ -175,6 +177,16 @@ export function Sidebar({ role, screen, onNavigate, collapsed }) {
         }}>
           <Icon name="settings" size={20} />
           {!collapsed && 'Settings'}
+        </button>
+        <button 
+          onClick={logout}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start', gap: 10,
+            padding: collapsed ? 10 : '10px 12px', border: 0, borderRadius: 8, background: 'transparent', cursor: 'pointer',
+            color: 'var(--danger-fg)', font: '500 13px var(--font-sans)',
+        }}>
+          <Icon name="logout" size={20} />
+          {!collapsed && 'Log out'}
         </button>
       </div>
     </aside>

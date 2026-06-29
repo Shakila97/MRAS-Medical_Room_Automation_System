@@ -111,8 +111,13 @@ async def get_doctor_dashboard(db: AsyncSession = Depends(get_db), current_user:
     active_emp = active_emp_q.scalar() or 0
     
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    queue_q = await db.execute(select(func.count(Appointment.id)).where(Appointment.scheduled_at >= today_start))
-    today_queue = queue_q.scalar() or 0
+    queue_q = await db.execute(
+        select(Appointment)
+        .where(Appointment.scheduled_at >= today_start)
+        .order_by(Appointment.scheduled_at.asc())
+    )
+    today_appts = queue_q.scalars().all()
+    today_queue = len(today_appts)
 
     jrissi_high_q = await db.execute(select(func.count(JRISSIRecord.id)).where(JRISSIRecord.risk_band == RiskBand.HIGH))
     jrissi_high = jrissi_high_q.scalar() or 0
@@ -138,7 +143,8 @@ async def get_doctor_dashboard(db: AsyncSession = Depends(get_db), current_user:
         dept_str = dept.value.capitalize() if dept else "Engineering"
         
         patients_data.append({
-            "id": pat.employee_id,
+            "id": pat.id,
+            "employee_id": pat.employee_id,
             "name": f"{pat.first_name[0]}. {pat.last_name}",
             "dept": dept_str,
             "jrissi": jrissi.mhrs,
@@ -147,9 +153,30 @@ async def get_doctor_dashboard(db: AsyncSession = Depends(get_db), current_user:
             "flags": ["JRISSI High"] if jrissi.risk_band == RiskBand.HIGH else []
         })
 
+    # Prepare queue data
+    queue_data = []
+    for appt in today_appts:
+        # Fetch patient for the queue
+        pat_q = await db.execute(select(Patient).where(Patient.id == appt.patient_id))
+        pat = pat_q.scalar_one_or_none()
+        name = f"{pat.first_name[0]}. {pat.last_name}" if pat else "Unknown"
+        icon = "event_available" if appt.status == AppointmentStatus.CHECKED_IN else "schedule"
+        
+        queue_data.append({
+            "id": appt.id,
+            "patient_id": pat.id if pat else None,
+            "employee_id": pat.employee_id if pat else "",
+            "t": appt.scheduled_at.strftime("%H:%M"),
+            "n": name,
+            "r": appt.notes or "Routine check-in",
+            "icon": icon,
+            "status": appt.status.value
+        })
+
     return {
         "stats": stats,
-        "patients": patients_data
+        "patients": patients_data,
+        "queue": queue_data
     }
 
 

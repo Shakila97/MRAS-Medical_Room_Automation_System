@@ -78,6 +78,7 @@ export default function App() {
         <Route path="/doctor/dashboard"     element={<RoleLayout role="doctor"><DoctorDashboard onOpenPatient={() => {}} /></RoleLayout>} />
         <Route path="/doctor/patients"      element={<RoleLayout role="doctor"><PatientRecord patientId="E-002417" onBack={() => {}} /></RoleLayout>} />
         <Route path="/doctor/consultations" element={<RoleLayout role="doctor"><SoapEditor /></RoleLayout>} />
+        <Route path="/doctor/prescriptions" element={<RoleLayout role="doctor"><PrescriptionWriter /></RoleLayout>} />
         <Route path="/doctor/jrissi"        element={<RoleLayout role="doctor"><JrissiDeepDive /></RoleLayout>} />
         <Route path="/doctor/ai"            element={<RoleLayout role="doctor"><JrissiAiOverview onOpenPatient={() => {}} /></RoleLayout>} />
         <Route path="/doctor/forecasts"     element={<RoleLayout role="doctor"><ForecastingView /></RoleLayout>} />

@@ -5,19 +5,33 @@ import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, Section
 import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
 export function PharmacyDashboard({ onOpenInventory }) {
   const [data, setData] = useState(null);
+  const [queue, setQueue] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/dashboard/pharmacy')
-      .then(res => {
-        setData(res.data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Failed to load dashboard:', err);
-        setLoading(false);
-      });
+    Promise.all([
+      api.get('/dashboard/pharmacy'),
+      api.get('/prescriptions/queue')
+    ]).then(([dashRes, queueRes]) => {
+      setData(dashRes.data);
+      setQueue(queueRes.data);
+      setLoading(false);
+    }).catch(err => {
+      console.error('Failed to load dashboard:', err);
+      setLoading(false);
+    });
   }, []);
+
+  const handleDispense = async (rxId) => {
+    try {
+      await api.post(`/prescriptions/${rxId}/dispense`);
+      setQueue(queue.filter(rx => rx.id !== rxId));
+      alert("Dispensed successfully!");
+    } catch (err) {
+      console.error("Failed to dispense", err);
+      alert("Failed to dispense.");
+    }
+  };
 
   if (loading || !data) return <div style={{ padding: 40 }}><Skeleton rows={10} /></div>;
 
@@ -140,19 +154,27 @@ export function PharmacyDashboard({ onOpenInventory }) {
           ))}
         </Card>
 
-        {/* Drug-interaction alerts (OpenFDA) */}
-        <Card>
-          <CardHeader eyebrow="OpenFDA · drug-interaction engine" title="Pending alerts" />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <Banner tone="warning" icon="warning" title="Possible interaction · Rx-9418.">
-              Amlodipine + Simvastatin co-prescription. Reduce simvastatin to ≤ 20 mg/d.
-            </Banner>
-            <Banner tone="warning" icon="warning" title="Possible interaction · Rx-9417.">
-              Ibuprofen + warfarin. Increased bleeding risk. Confirm with prescribing doctor.
-            </Banner>
-            <Banner tone="info" icon="info" title="Daily OpenFDA sync complete.">
-              Updated 09:00. 2 new monographs ingested.
-            </Banner>
+        {/* Pending Dispense Queue */}
+        <Card padding={0}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div className="type-eyebrow">Pending Prescriptions</div>
+              <div className="type-h3" style={{ marginTop: 2 }}>Dispense Queue</div>
+            </div>
+            <Chip tone="warning" dot>{queue.length} pending</Chip>
+          </div>
+          <div>
+            {queue.length === 0 ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--fg-3)' }}>No pending prescriptions.</div>
+            ) : queue.map((rx) => (
+              <div key={rx.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border-1)' }}>
+                <div>
+                  <div className="type-label">{rx.drug_name} · {rx.dosage}</div>
+                  <div className="type-caption">Patient {rx.patient_id} · {rx.duration_days} days · {rx.instructions}</div>
+                </div>
+                <Button kind="primary" size="sm" onClick={() => handleDispense(rx.id)}>Dispense</Button>
+              </div>
+            ))}
           </div>
         </Card>
       </div>
