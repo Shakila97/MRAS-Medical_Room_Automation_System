@@ -116,15 +116,25 @@ async def qr_checkin(
     summary="Get full patient profile",
 )
 async def get_patient_by_id(
-    patient_id: int,
+    patient_id: str,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.DOCTOR, UserRole.ADMIN)),
 ):
     """
-    Get a patient's full health profile by ID.
+    Get a patient's full health profile by ID or Employee ID.
     **Doctor or Admin only.**
     """
-    return await get_patient(patient_id, db)
+    if patient_id.startswith("E-") or not patient_id.isdigit():
+        from src.modules.patient_service import get_patient_by_employee_id
+        patient = await get_patient_by_employee_id(patient_id, db)
+        if not patient:
+            from fastapi import HTTPException
+            raise HTTPException(404, "Patient not found")
+        patient_id_int = patient.id
+    else:
+        patient_id_int = int(patient_id)
+        
+    return await get_patient(patient_id_int, db)
 
 
 # ── PUT /api/patients/{id} ────────────────────────────────────────────────────

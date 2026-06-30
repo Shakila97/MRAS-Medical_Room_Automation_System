@@ -76,10 +76,20 @@ async def vitals(
 @router.get("/patient/{patient_id}", response_model=List[ConsultationRead],
             summary="List all consultations for a patient")
 async def list_for_patient(
-    patient_id: int,
+    patient_id: str,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.DOCTOR, UserRole.ADMIN)),
 ):
-    return await list_patient_consultations(patient_id, db, skip, limit)
+    if patient_id.startswith("E-") or not patient_id.isdigit():
+        from src.modules.patient_service import get_patient_by_employee_id
+        patient = await get_patient_by_employee_id(patient_id, db)
+        if not patient:
+            from fastapi import HTTPException
+            raise HTTPException(404, "Patient not found")
+        patient_id_int = patient.id
+    else:
+        patient_id_int = int(patient_id)
+        
+    return await list_patient_consultations(patient_id_int, db, skip, limit)

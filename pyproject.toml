@@ -22,8 +22,6 @@ addopts = "-v --tb=short"
 source = ["src"]
 omit = ["src/main.py"]
 
-[tool.ruff]
-
 [tool.ruff.lint]
 select = ["E", "F"]
 ignore = ["E501", "F401", "F811"]

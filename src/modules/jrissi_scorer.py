@@ -47,7 +47,7 @@ class JRISSIScorer:
 
         vitals = await self._load_vitals(patient_id, since)
         consultations = await self._load_consultations(patient_id, since)
-        prescriptions = await self._load_prescriptions(patient_id)
+        prescriptions = await self._load_prescriptions(patient_id, since)
 
         sub_raw = {
             "mental_history":  self._score_mental_history(patient, consultations),
@@ -91,9 +91,15 @@ class JRISSIScorer:
 
     def _score_mental_history(self, patient: Patient, consults: list) -> float:
         """Higher score if patient has mental health conditions noted."""
-        if not patient.conditions:
+        conditions_lower = (patient.chronic_conditions or "").lower()
+        for c in consults:
+            for field in [c.subjective, c.objective, c.assessment, c.plan]:
+                if field:
+                    conditions_lower += " " + field.lower()
+                
+        if not conditions_lower.strip():
             return 0.1
-        conditions_lower = patient.conditions.lower()
+            
         mental_keywords = ["depression", "anxiety", "ptsd", "burnout",
                            "insomnia", "bipolar", "stress"]
         hits = sum(1 for kw in mental_keywords if kw in conditions_lower)
@@ -199,10 +205,11 @@ class JRISSIScorer:
                 select(Notification)
                 .where(
                     Notification.kind == NotificationKind.JRISSI_ESCALATION,
+                    Notification.title.like(f"%Patient #{patient_id}%"),
                     Notification.created_at >= since,
                 )
             )
-            if not existing.scalar_one_or_none():
+            if not existing.first():
                 notif = Notification(
                     kind=NotificationKind.JRISSI_ESCALATION,
                     tone=NotificationTone.DANGER,
@@ -251,13 +258,14 @@ class JRISSIScorer:
         )
         return result.scalars().all()
 
-    async def _load_prescriptions(self, patient_id: int) -> list:
+    async def _load_prescriptions(self, patient_id: int, since: datetime) -> list:
         result = await self.db.execute(
             select(Prescription)
             .where(
                 Prescription.patient_id == patient_id,
                 Prescription.status == ConsultationStatus.SIGNED,
                 Prescription.dispensed_at.is_not(None),
+                Prescription.dispensed_at >= since,
             )
         )
         return result.scalars().all()

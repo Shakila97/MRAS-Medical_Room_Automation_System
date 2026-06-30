@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from src.core.database import get_db
 from src.models import (
     User, UserRole, Patient, InventoryItem, GRNLot, AuditLog, 
-    JRISSIRecord, Appointment, RiskBand
+    JRISSIRecord, Appointment, RiskBand, AppointmentStatus
 )
 from src.modules.auth_service import require_role
 
