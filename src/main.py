@@ -17,6 +17,7 @@ from src.api.intelligence import router as intelligence_router
 from src.api.admin import router as admin_router
 from src.api.notifications import router as notifications_router
 from src.api.wellness import router as wellness_router
+from src.api.dashboard import router as dashboard_router
 from src.core.scheduler import start_scheduler, shutdown_scheduler
 
 
@@ -75,6 +76,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_router, prefix="/api")
     app.include_router(notifications_router, prefix="/api")
     app.include_router(wellness_router, prefix="/api")
+    app.include_router(dashboard_router, prefix="/api")
 
     # ── Health Check ──────────────────────────────────────────────────────────
     @app.get("/health", tags=["System"], summary="Health check")

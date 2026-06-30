@@ -94,6 +94,27 @@ async def my_wellness(
 
 # ── Appointments ──────────────────────────────────────────────────────────────
 
+@router.get("/appointments/me", response_model=List[AppointmentRead], summary="My upcoming appointments")
+async def my_appointments(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    patient_result = await db.execute(select(Patient).where(Patient.user_id == user.id))
+    patient = patient_result.scalar_one_or_none()
+    if not patient:
+        return []
+
+    now = datetime.now(timezone.utc)
+    # Return both past and future for the timeline, ordered by date desc
+    result = await db.execute(
+        select(Appointment)
+        .where(Appointment.patient_id == patient.id)
+        .order_by(Appointment.scheduled_at.desc())
+        .limit(10)
+    )
+    return result.scalars().all()
+
+
 @router.get("/appointments/availability", summary="Available appointment slots")
 async def availability(
     date: Optional[str] = Query(default=None),

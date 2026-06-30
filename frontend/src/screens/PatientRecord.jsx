@@ -1,13 +1,33 @@
-﻿/* eslint-disable */
-import React from 'react';
+/* eslint-disable */
+import React, { useState, useEffect } from 'react';
+import { api } from '../api/client';
 import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
 import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
+import { useNavigate } from 'react-router-dom';
+
 export function PatientRecord({ patientId, onBack }) {
-  const p = (window.PATIENTS || []).find(x => x.id === patientId) || {
-    id: patientId || 'E-002417', name: 'A. Perera', dept: 'Engineering',
-    jrissi: 78, jr_delta: '+12', last: '2 d ago',
-    flags: ['JRISSI High', 'Asthma'],
-  };
+  const navigate = useNavigate();
+  const [p, setP] = useState(null);
+  const [consultations, setConsultations] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!patientId) return;
+    Promise.all([
+      api.get(`/patients/${patientId}`),
+      api.get(`/consultations/patient/${patientId}`)
+    ]).then(([patRes, conRes]) => {
+      setP(patRes.data);
+      setConsultations(conRes.data);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
+  }, [patientId]);
+
+  if (loading) return <div style={{ padding: 40 }}><Skeleton rows={10} /></div>;
+  if (!p) return <ErrorState message="Patient not found" />;
 
   const sleepTrend  = [7.2, 7.0, 6.8, 6.3, 6.0, 5.5, 5.3, 5.0, 4.8, 5.1, 4.6, 4.4, 4.7, 4.3];
   const stepsTrend  = [9200, 8400, 8800, 7600, 7100, 6800, 6500, 5900, 6200, 5400, 5100, 5700, 4900, 5200];
@@ -19,29 +39,28 @@ export function PatientRecord({ patientId, onBack }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, font: '400 13px var(--font-sans)', color: 'var(--fg-3)' }}>
         <a href="#" onClick={(e) => { e.preventDefault(); onBack(); }} style={{ color: 'var(--primary)', textDecoration: 'none' }}>Patients</a>
         <Icon name="chevron_right" size={20} style={{ fontSize: 14 }} />
-        <span style={{ color: 'var(--fg-1)' }}>{p.name}</span>
+        <span style={{ color: 'var(--fg-1)' }}>{p.full_name}</span>
       </div>
 
       {/* Header */}
       <Card>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <Avatar name={p.name} size={64} color="var(--slate-500)" />
+          <Avatar name={p.full_name} size={64} color="var(--slate-500)" />
           <div style={{ flex: 1 }}>
-            <h1 className="type-h1" style={{ marginBottom: 4 }}>{p.name}</h1>
+            <h1 className="type-h1" style={{ marginBottom: 4 }}>{p.full_name}</h1>
             <div className="type-body-s" style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-              <span><b style={{ color: 'var(--fg-1)' }}>{p.id}</b> · {p.dept}</span>
-              <span>32 y · M · O+</span>
-              <span>Last seen {p.last}</span>
+              <span><b style={{ color: 'var(--fg-1)' }}>{p.employee_id}</b> · {p.department.charAt(0).toUpperCase() + p.department.slice(1)}</span>
+              <span>32 y · {p.gender.charAt(0)} · O+</span>
+              <span>Last seen recently</span>
             </div>
             <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-              <Chip tone="high" dot>JRISSI High · {p.jrissi}</Chip>
-              <Chip tone="warning" icon="warning">Asthma · seasonal</Chip>
-              <Chip tone="info">Allergy: pollen, dust</Chip>
-              <Chip tone="neutral">Non-smoker</Chip>
+              <Chip tone="high" dot>JRISSI High · 78</Chip>
+              {p.allergies && <Chip tone="warning" icon="warning">Allergy: {p.allergies}</Chip>}
+              {p.medical_conditions && <Chip tone="info">Cond: {p.medical_conditions}</Chip>}
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <Button kind="primary" icon="stethoscope">Start consultation</Button>
+            <Button kind="primary" icon="stethoscope" onClick={() => navigate('/doctor/consultations', { state: { patient: p } })}>Start consultation</Button>
             <Button kind="secondary" icon="description">Pre-visit briefing</Button>
           </div>
         </div>
@@ -110,27 +129,26 @@ export function PatientRecord({ patientId, onBack }) {
           <Card padding={0}>
             <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div className="type-h3">Consultations</div>
-              <Button kind="ghost" size="sm" icon="add">New</Button>
+              <Button kind="ghost" size="sm" icon="add" onClick={() => navigate('/doctor/consultations', { state: { patient: p } })}>New</Button>
             </div>
-            {[
-              { d: '12 May 2026', who: 'Dr. Withana', sum: 'BP elevated, advised diet review. Cetirizine 10 mg ×7 d.', icon: 'monitor_heart' },
-              { d: '02 May 2026', who: 'Dr. Withana', sum: 'Mild allergic rhinitis, prescribed antihistamine.', icon: 'pill' },
-              { d: '18 Apr 2026', who: 'Dr. Fernando', sum: 'Routine check, all parameters within range.', icon: 'check_circle' },
-            ].map((c, i) => (
-              <div key={i} style={{ display: 'flex', gap: 12, padding: '14px 20px', borderTop: i === 0 ? 0 : '1px solid var(--border-1)', alignItems: 'flex-start' }}>
+            {consultations.length > 0 ? consultations.map((c, i) => (
+              <div key={c.id} style={{ display: 'flex', gap: 12, padding: '14px 20px', borderTop: i === 0 ? 0 : '1px solid var(--border-1)', alignItems: 'flex-start' }}>
                 <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--bg-canvas)', border: '1px solid var(--border-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
-                  <Icon name={c.icon} size={20} style={{ color: 'var(--primary)' }} />
+                  <Icon name="monitor_heart" size={20} style={{ color: 'var(--primary)' }} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                    <span className="type-label" style={{ color: 'var(--fg-1)' }}>{c.who}</span>
-                    <span className="type-caption">{c.d}</span>
+                    <span className="type-label" style={{ color: 'var(--fg-1)' }}>Dr. {c.doctor_id}</span>
+                    <span className="type-caption">{new Date(c.created_at).toLocaleDateString()}</span>
                   </div>
-                  <p className="type-body-s" style={{ marginTop: 4 }}>{c.sum}</p>
+                  <p className="type-body-s" style={{ marginTop: 4 }}>{c.assessment || "No assessment notes."}</p>
+                  {c.plan && <p className="type-body-s" style={{ marginTop: 4, color: 'var(--fg-3)' }}>Plan: {c.plan}</p>}
                 </div>
                 <Icon name="chevron_right" size={20} style={{ color: 'var(--fg-3)' }} />
               </div>
-            ))}
+            )) : (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--fg-3)' }}>No previous consultations.</div>
+            )}
           </Card>
         </div>
 
@@ -139,7 +157,7 @@ export function PatientRecord({ patientId, onBack }) {
           <Card style={{ background: 'linear-gradient(180deg, var(--surface-1) 0%, var(--surface-1) 100%)' }}>
             <CardHeader eyebrow="Doctor-only" title="JRISSI · mental health" />
             <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-              <JrissiGauge score={p.jrissi} size={140} />
+              <JrissiGauge score={78} size={140} />
               <div style={{ flex: 1 }}>
                 <div className="type-body-s" style={{ marginBottom: 8 }}>
                   Sustained High for <b style={{ color: 'var(--fg-1)' }}>14 days</b>. Driving factors:

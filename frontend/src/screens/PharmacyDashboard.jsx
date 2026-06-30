@@ -1,29 +1,42 @@
-﻿/* eslint-disable */
-import React from 'react';
+/* eslint-disable */
+import React, { useState, useEffect } from 'react';
+import { api } from '../api/client';
 import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
 import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
 export function PharmacyDashboard({ onOpenInventory }) {
-  const expiringSoon = [
-    { name: 'Amlodipine 5 mg',  brand: 'Norvasc',    qty: 84,  daysLeft: 9,  batch: 'A-2026-05-B', tone: 'high' },
-    { name: 'Cetirizine 10 mg', brand: 'Zyrtec',     qty: 312, daysLeft: 19, batch: 'C-2026-06-B', tone: 'moderate' },
-    { name: 'Ibuprofen 400 mg', brand: 'Brufen',     qty: 188, daysLeft: 66, batch: 'I-2026-07-A', tone: 'moderate' },
-    { name: 'Paracetamol 500 mg', brand: 'Panadol',  qty: 1240, daysLeft: 89, batch: 'P-2026-08-A', tone: 'low' },
-  ];
+  const [data, setData] = useState(null);
+  const [queue, setQueue] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const grnActivity = [
-    { t: '08:42', who: 'L. Koralage', action: 'Received GRN-2026-0148', sub: 'Salbutamol inhaler · 50 units · Hemas Pharma', icon: 'inventory_2' },
-    { t: '08:15', who: 'L. Koralage', action: 'Dispensed Rx-9421',       sub: 'Cetirizine 10 mg · 7 tabs · Dr. Withana', icon: 'pill' },
-    { t: 'Wed',   who: 'L. Koralage', action: 'Quarantined batch L-2025-12-A', sub: 'Loratadine · expiry recall', icon: 'block' },
-    { t: 'Wed',   who: 'System',     action: 'Auto-marked 3 SKUs critical',  sub: 'Expiry < 30 d threshold', icon: 'schedule' },
-  ];
+  useEffect(() => {
+    Promise.all([
+      api.get('/dashboard/pharmacy'),
+      api.get('/prescriptions/queue')
+    ]).then(([dashRes, queueRes]) => {
+      setData(dashRes.data);
+      setQueue(queueRes.data);
+      setLoading(false);
+    }).catch(err => {
+      console.error('Failed to load dashboard:', err);
+      setLoading(false);
+    });
+  }, []);
 
-  const topDispensed = [
-    { name: 'Paracetamol 500 mg',  count: 142, bar: 100 },
-    { name: 'Cetirizine 10 mg',    count: 96,  bar: 68 },
-    { name: 'Ibuprofen 400 mg',    count: 71,  bar: 50 },
-    { name: 'ORS sachets',         count: 58,  bar: 41 },
-    { name: 'Amlodipine 5 mg',     count: 44,  bar: 31 },
-  ];
+  const handleDispense = async (rxId) => {
+    try {
+      await api.post(`/prescriptions/${rxId}/dispense`);
+      setQueue(queue.filter(rx => rx.id !== rxId));
+      alert("Dispensed successfully!");
+    } catch (err) {
+      console.error("Failed to dispense", err);
+      alert("Failed to dispense.");
+    }
+  };
+
+  if (loading || !data) return <div style={{ padding: 40 }}><Skeleton rows={10} /></div>;
+
+  const { expiringSoon, grnActivity, topDispensed, stats } = data;
+
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -47,13 +60,7 @@ export function PharmacyDashboard({ onOpenInventory }) {
       {/* Stat strip */}
       <Card padding={0}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)' }}>
-          {[
-            { icon: 'inventory',     label: 'SKUs in stock',    value: '247' },
-            { icon: 'schedule',      label: 'Expiring < 30 d',  value: '8',  delta: '2 critical', deltaTone: 'bad' },
-            { icon: 'block',         label: 'Out of stock',     value: '3', deltaTone: 'bad' },
-            { icon: 'pill',          label: 'Dispensed today',  value: '47', delta: '↑ 12 vs avg', deltaTone: 'neutral' },
-            { icon: 'savings',       label: 'Stock value',      value: 'LKR 1.2 M' },
-          ].map((s, i) => (
+          {stats.map((s, i) => (
             <div key={i} style={{ borderRight: i < 4 ? '1px solid var(--border-1)' : 0 }}>
               <StatTile {...s} />
             </div>
@@ -147,19 +154,27 @@ export function PharmacyDashboard({ onOpenInventory }) {
           ))}
         </Card>
 
-        {/* Drug-interaction alerts (OpenFDA) */}
-        <Card>
-          <CardHeader eyebrow="OpenFDA · drug-interaction engine" title="Pending alerts" />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <Banner tone="warning" icon="warning" title="Possible interaction · Rx-9418.">
-              Amlodipine + Simvastatin co-prescription. Reduce simvastatin to ≤ 20 mg/d.
-            </Banner>
-            <Banner tone="warning" icon="warning" title="Possible interaction · Rx-9417.">
-              Ibuprofen + warfarin. Increased bleeding risk. Confirm with prescribing doctor.
-            </Banner>
-            <Banner tone="info" icon="info" title="Daily OpenFDA sync complete.">
-              Updated 09:00. 2 new monographs ingested.
-            </Banner>
+        {/* Pending Dispense Queue */}
+        <Card padding={0}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div className="type-eyebrow">Pending Prescriptions</div>
+              <div className="type-h3" style={{ marginTop: 2 }}>Dispense Queue</div>
+            </div>
+            <Chip tone="warning" dot>{queue.length} pending</Chip>
+          </div>
+          <div>
+            {queue.length === 0 ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--fg-3)' }}>No pending prescriptions.</div>
+            ) : queue.map((rx) => (
+              <div key={rx.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border-1)' }}>
+                <div>
+                  <div className="type-label">{rx.drug_name} · {rx.dosage}</div>
+                  <div className="type-caption">Patient {rx.patient_id} · {rx.duration_days} days · {rx.instructions}</div>
+                </div>
+                <Button kind="primary" size="sm" onClick={() => handleDispense(rx.id)}>Dispense</Button>
+              </div>
+            ))}
           </div>
         </Card>
       </div>

@@ -1,27 +1,27 @@
-﻿/* eslint-disable */
-import React from 'react';
+/* eslint-disable */
+import React, { useState, useEffect } from 'react';
+import { api } from '../api/client';
 import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
 import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
 export function AdminDashboard() {
-  const users = [
-    { name: 'Dr. W.I.L. Withana',    role: 'Doctor',   dept: 'Clinical',     status: 'active', last: '2 min',  accent: 'var(--role-doctor)' },
-    { name: 'Dr. C. Jeewan',          role: 'Doctor',   dept: 'Clinical',     status: 'active', last: '14 min', accent: 'var(--role-doctor)' },
-    { name: 'L. Koralage',            role: 'Pharmacy', dept: 'Pharmacy',     status: 'active', last: '1 min',  accent: 'var(--role-pharmacy)' },
-    { name: 'D. Anuradha',            role: 'Admin',    dept: 'Administration', status: 'active', last: 'now',  accent: 'var(--role-admin)' },
-    { name: 'P. Jayasinghe',          role: 'Employee', dept: 'Operations',   status: 'active', last: '38 min', accent: 'var(--role-employee)' },
-    { name: 'S. Fernando',            role: 'Employee', dept: 'HR',           status: 'invited', last: '—',     accent: 'var(--role-employee)' },
-  ];
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const audit = [
-    { t: '09:48', who: 'system',          action: 'Auto-escalation triggered',          target: 'E-002417 · JRISSI 14 d', tone: 'warning', icon: 'priority_high' },
-    { t: '09:42', who: 'Dr. Withana',     action: 'Viewed patient record',              target: 'E-002417',               tone: 'info',    icon: 'visibility' },
-    { t: '09:31', who: 'L. Koralage',     action: 'Dispensed prescription',             target: 'Rx-9421 · Cetirizine',   tone: 'info',    icon: 'pill' },
-    { t: '09:14', who: 'system',          action: 'Daily OpenFDA sync complete',        target: '2 monographs ingested',  tone: 'info',    icon: 'sync' },
-    { t: '08:56', who: 'B.W.S.S. Naw…',   action: 'Employee check-in',                  target: 'QR · medical room',      tone: 'info',    icon: 'qr_code_2' },
-    { t: '08:00', who: 'system',          action: 'Forecast batch run · pollen',        target: '3 employees flagged',    tone: 'info',    icon: 'insights' },
-    { t: '07:45', who: 'admin',           action: 'Role updated · Pharmacy → Lead',     target: 'L. Koralage',            tone: 'warning', icon: 'admin_panel_settings' },
-    { t: 'Wed',   who: 'system',          action: 'Failed login throttled · 5 attempts', target: 'IP 10.0.2.41',          tone: 'danger',  icon: 'lock' },
-  ];
+  useEffect(() => {
+    api.get('/dashboard/admin')
+      .then(res => {
+        setData(res.data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to load dashboard:', err);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading || !data) return <div style={{ padding: 40 }}><Skeleton rows={10} /></div>;
+
+  const { users, audit, stats, services, role_distribution } = data;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -44,13 +44,7 @@ export function AdminDashboard() {
       {/* System health */}
       <Card padding={0}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)' }}>
-          {[
-            { icon: 'group',            label: 'Active users',     value: '1,284', delta: '+6 this week', deltaTone: 'good' },
-            { icon: 'shield_person',    label: 'Roles assigned',   value: '1,284 / 1,284' },
-            { icon: 'cloud_done',       label: 'Service uptime',   value: '99.97', unit: '%',   delta: 'SLA 99.9%', deltaTone: 'good' },
-            { icon: 'database',         label: 'DB latency p95',   value: '42',   unit: 'ms' },
-            { icon: 'security',         label: 'Security events',  value: '1',    delta: '24 h window', deltaTone: 'neutral' },
-          ].map((s, i) => (
+          {stats.map((s, i) => (
             <div key={i} style={{ borderRight: i < 4 ? '1px solid var(--border-1)' : 0 }}>
               <StatTile {...s} />
             </div>
@@ -62,16 +56,7 @@ export function AdminDashboard() {
       <Card>
         <CardHeader eyebrow="Backing services" title="Status" action={<Chip tone="success" dot>All systems normal</Chip>} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-          {[
-            { name: 'FastAPI backend',     state: 'up', meta: 'v3.0.4 · ECS' },
-            { name: 'PostgreSQL · Timescale', state: 'up', meta: 'p95 42 ms' },
-            { name: 'Claude API',          state: 'up', meta: 'sonnet-4-6' },
-            { name: 'OpenWeatherMap',      state: 'degraded', meta: '1 retry/h' },
-            { name: 'Twilio WhatsApp',     state: 'up', meta: '99.99%' },
-            { name: 'SendGrid email',      state: 'up', meta: '99.97%' },
-            { name: 'OpenFDA monographs',  state: 'up', meta: 'last sync 09:14' },
-            { name: 'Tomorrow.io (fallback)', state: 'idle', meta: 'standby' },
-          ].map((s, i) => {
+          {services.map((s, i) => {
             const tone = s.state === 'up' ? 'low' : s.state === 'degraded' ? 'moderate' : 'neutral';
             const label = s.state === 'up' ? 'Up' : s.state === 'degraded' ? 'Degraded' : 'Idle';
             return (
@@ -130,12 +115,7 @@ export function AdminDashboard() {
         <Card>
           <CardHeader eyebrow="RBAC" title="Role distribution" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 4 }}>
-            {[
-              { name: 'Employee',  count: 1248, pct: 97.2, color: 'var(--role-employee)' },
-              { name: 'Doctor',    count: 12,   pct: 0.9,  color: 'var(--role-doctor)' },
-              { name: 'Pharmacy',  count: 18,   pct: 1.4,  color: 'var(--role-pharmacy)' },
-              { name: 'Admin',     count: 6,    pct: 0.5,  color: 'var(--role-admin)' },
-            ].map((r, i) => (
+            {role_distribution.map((r, i) => (
               <div key={i}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

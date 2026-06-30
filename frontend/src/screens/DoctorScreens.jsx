@@ -1,18 +1,64 @@
-﻿/* eslint-disable */
+/* eslint-disable */
 import React from 'react';
 import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
 import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { api } from '../api/client';
 // JRISSI deep-dive panel, Predictive forecasting view.
 
 // ============================================================================
 // 1. SOAP CONSULTATION EDITOR
 // ============================================================================
 export function SoapEditor() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const patient = location.state?.patient || { id: 1, full_name: 'A. Perera', employee_id: 'E-002417', department: 'engineering', jrissi: 78 };
+  
   const [tab, setTab] = React.useState('s');
-  const [s, setS] = React.useState('Patient reports recurrent morning headaches over the past 10 days, worse after long meeting blocks. Mild congestion. Denies fever or photophobia. Sleep self-reported 5–6 h.');
-  const [o, setO] = React.useState('BP 128/84 mmHg · HR 76 bpm · Temp 36.7 °C · SpO₂ 97% · BMI 24.1. No nasal discharge. Mild scleral injection. Chest clear.');
-  const [a, setA] = React.useState('Tension-type headache likely; rule out early seasonal allergic rhinitis. JRISSI elevated to 78 — flagged for OH escalation.');
-  const [p, setP] = React.useState('1) Cetirizine 10 mg OD × 7d. 2) Sleep hygiene leaflet. 3) Re-check JRISSI in 7d, escalate to OH psych if sustained.');
+  const [s, setS] = React.useState('');
+  const [o, setO] = React.useState('');
+  const [a, setA] = React.useState('');
+  const [p, setP] = React.useState('');
+  const [consultId, setConsultId] = React.useState(null);
+  const [saving, setSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    // Create draft on load
+    api.post('/consultations/', { patient_id: patient.id })
+      .then(res => setConsultId(res.data.id))
+      .catch(err => console.error("Failed to create draft", err));
+  }, [patient.id]);
+
+  const handleSaveDraft = async () => {
+    if (!consultId) return;
+    setSaving(true);
+    try {
+      await api.patch(`/consultations/${consultId}`, { subjective: s, objective: o, assessment: a, plan: p });
+      alert("Draft saved!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save draft");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSign = async () => {
+    if (!consultId) return;
+    setSaving(true);
+    try {
+      await api.patch(`/consultations/${consultId}`, { subjective: s, objective: o, assessment: a, plan: p });
+      await api.post(`/consultations/${consultId}/sign`);
+      alert("Consultation signed and closed!");
+      navigate('/doctor/dashboard');
+    } catch (err) {
+      console.error(err);
+      alert("Failed to sign consultation");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const tabs = [
     { value: 's', label: 'Subjective', icon: 'edit_note' },
     { value: 'o', label: 'Objective', icon: 'monitor_heart' },
@@ -26,18 +72,19 @@ export function SoapEditor() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
         <div>
-          <div className="type-eyebrow" style={{ marginBottom: 6 }}>Consultation · started 09:34</div>
-          <h1 className="type-h1">SOAP — A. Perera</h1>
-          <p className="type-body" style={{ marginTop: 6 }}>E-002417 · Engineering · 34 y · M · <span style={{ color: 'var(--danger-fg)' }}>JRISSI 78</span></p>
+          <div className="type-eyebrow" style={{ marginBottom: 6 }}>Consultation · started now</div>
+          <h1 className="type-h1">SOAP — {patient.full_name}</h1>
+          <p className="type-body" style={{ marginTop: 6 }}>{patient.employee_id} · {patient.department} · {patient.jrissi ? <span style={{ color: 'var(--danger-fg)' }}>JRISSI {patient.jrissi}</span> : 'No JRISSI data'}</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <Button kind="ghost" icon="history">History</Button>
-          <Button kind="secondary" icon="save">Save draft</Button>
-          <Button kind="primary" icon="check">Sign &amp; close</Button>
+          <Button kind="ghost" icon="pill" onClick={() => navigate('/doctor/prescriptions', { state: { patient } })}>Write Prescription</Button>
+          <Button kind="ghost" icon="history" onClick={() => navigate('/doctor/patients', { state: { patient } })}>History</Button>
+          <Button kind="secondary" icon="save" onClick={handleSaveDraft} disabled={saving}>Save draft</Button>
+          <Button kind="primary" icon="check" onClick={handleSign} disabled={saving}>Sign &amp; close</Button>
         </div>
       </header>
 
-      <Banner tone="warning" title="JRISSI sustained High for 14 days.">Consider escalation to OH psych as part of plan. <a href="#" style={{ color: 'var(--warning-fg)', textDecoration: 'underline' }}>Open JRISSI deep-dive</a>.</Banner>
+      <Banner tone="warning" title="JRISSI sustained High for 14 days.">Consider escalation to OH psych as part of plan. <a href="#" onClick={(e) => { e.preventDefault(); navigate('/doctor/jrissi', { state: { patient } }); }} style={{ color: 'var(--warning-fg)', textDecoration: 'underline' }}>Open JRISSI deep-dive</a>.</Banner>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20 }}>
         <Card padding={0}>
@@ -128,22 +175,53 @@ export function SoapEditor() {
 // 2. PRESCRIPTION WRITER
 // ============================================================================
 export function PrescriptionWriter() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const patient = location.state?.patient || { id: 1, full_name: 'A. Perera' };
+  
+  const [saving, setSaving] = React.useState(false);
+
   const rx = [
     { name: 'Cetirizine', brand: 'Zyrtec', strength: '10 mg', form: 'tab', dose: '1 tab OD', dur: '7 days', stock: 124, interactions: 0 },
-    { name: 'Paracetamol', brand: 'Panadol', strength: '500 mg', form: 'tab', dose: '1–2 tab QDS PRN', dur: '5 days', stock: 312, interactions: 0 },
   ];
+
+  const handleSignAndSend = async () => {
+    setSaving(true);
+    try {
+      // 1. Create prescription
+      const res = await api.post('/prescriptions', {
+        patient_id: patient.id,
+        drug_name: 'Cetirizine',
+        dosage: '1 tab OD',
+        frequency: 'Daily',
+        duration_days: 7,
+        instructions: 'Take in the evening'
+      });
+      const rxId = res.data.id;
+      // 2. Sign prescription
+      await api.post(`/prescriptions/${rxId}/sign`);
+      alert("Prescription signed and sent to pharmacy queue!");
+      navigate('/doctor/dashboard');
+    } catch (err) {
+      console.error(err);
+      alert("Failed to create prescription");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
         <div>
           <div className="type-eyebrow" style={{ marginBottom: 6 }}>Consultation · prescription</div>
-          <h1 className="type-h1">Prescription — A. Perera</h1>
+          <h1 className="type-h1">Prescription — {patient.full_name}</h1>
           <p className="type-body" style={{ marginTop: 6 }}>Linked to today\u2019s consultation note · auto-sent to pharmacy on sign</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button kind="ghost" icon="content_copy">Copy from last visit</Button>
-          <Button kind="secondary" icon="save">Save draft</Button>
-          <Button kind="primary" icon="send">Sign &amp; send</Button>
+          <Button kind="secondary" icon="save" disabled={saving}>Save draft</Button>
+          <Button kind="primary" icon="send" onClick={handleSignAndSend} disabled={saving}>Sign &amp; send</Button>
         </div>
       </header>
 

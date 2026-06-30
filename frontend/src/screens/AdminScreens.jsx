@@ -1,4 +1,4 @@
-﻿/* eslint-disable */
+/* eslint-disable */
 import React from 'react';
 import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
 import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
@@ -6,15 +6,47 @@ import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, 
 // 1. USERS & ROLES
 // ============================================================================
 export function AdminUsers() {
-  const users = [
-    { name: 'Dr. P. Withana',     email: 'p.withana@corp.lk',      role: 'Doctor',     status: 'Active', last: '2 min ago', perms: ['JRISSI', 'Rx sign', 'Patient records'] },
-    { name: 'L. Koralage',        email: 'l.koralage@corp.lk',     role: 'Pharmacy',   status: 'Active', last: '14 min',    perms: ['Inventory', 'GRN'] },
-    { name: 'D. Anuradha',        email: 'd.anuradha@corp.lk',     role: 'Admin',      status: 'Active', last: 'now',       perms: ['All'] },
-    { name: 'B.W.S.S. Nawarathna', email: 'sss.naw@corp.lk',       role: 'Employee',   status: 'Active', last: '1 h ago',   perms: ['Self-service'] },
-    { name: 'S. Fernando',        email: 's.fernando@corp.lk',     role: 'Employee',   status: 'Active', last: '3 h ago',   perms: ['Self-service'] },
-    { name: 'Dr. N. Bandara',     email: 'n.bandara@corp.lk',      role: 'Doctor',     status: 'Pending', last: '—',         perms: ['—'] },
-    { name: 'M. Karunaratne',     email: 'm.karunaratne@corp.lk',  role: 'Employee',   status: 'Suspended', last: '2 d ago', perms: ['—'] },
-  ];
+  const [users, setUsers] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const res = await api.get('/admin/users?active_only=false');
+      setUsers(res.data.map(u => ({
+        name: u.full_name,
+        email: u.email,
+        role: u.role.charAt(0).toUpperCase() + u.role.slice(1),
+        status: u.is_active ? 'Active' : 'Suspended',
+        last: u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never',
+        perms: u.role === 'admin' ? ['All'] : ['Standard']
+      })));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInvite = async () => {
+    const email = window.prompt("Enter new user email:");
+    if (!email) return;
+    const fullName = window.prompt("Enter full name:");
+    if (!fullName) return;
+    const role = window.prompt("Enter role (employee, doctor, pharmacy, admin):", "employee");
+    
+    try {
+      await api.post('/admin/users', { email, full_name: fullName, role: role.toLowerCase() });
+      alert("User invited!");
+      fetchUsers();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to invite user");
+    }
+  };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
@@ -26,7 +58,7 @@ export function AdminUsers() {
         <div style={{ display: 'flex', gap: 8 }}>
           <Button kind="ghost" icon="upload_file">Bulk import</Button>
           <Button kind="secondary" icon="key">Manage roles</Button>
-          <Button kind="primary" icon="person_add">Invite user</Button>
+          <Button kind="primary" icon="person_add" onClick={handleInvite}>Invite user</Button>
         </div>
       </header>
 
@@ -72,7 +104,7 @@ export function AdminUsers() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Avatar name={u.name} size={28} color={{
                       'Doctor': 'var(--role-doctor)', 'Employee': 'var(--role-employee)', 'Pharmacy': 'var(--role-pharmacy)', 'Admin': 'var(--role-admin)'
-                    }[u.role]} />
+                    }[u.role] || 'var(--role-employee)'} />
                     <span className="type-label" style={{ color: 'var(--fg-1)' }}>{u.name}</span>
                   </div>
                 </td>
@@ -81,7 +113,7 @@ export function AdminUsers() {
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ width: 6, height: 6, borderRadius: 999, background: {
                       'Doctor': 'var(--role-doctor)', 'Employee': 'var(--role-employee)', 'Pharmacy': 'var(--role-pharmacy)', 'Admin': 'var(--role-admin)'
-                    }[u.role] }} />
+                    }[u.role] || 'var(--role-employee)' }} />
                     {u.role}
                   </span>
                 </td>
@@ -113,18 +145,21 @@ const tdAdm = { padding: '12px 16px', borderBottom: '1px solid var(--border-1)',
 // 2. AUDIT LOG
 // ============================================================================
 export function AuditLog() {
-  const entries = [
-    { t: '14 May · 09:34:12', actor: 'Dr. P. Withana', action: 'prescription.sign', tgt: 'rx_20260514_0042', ip: '10.42.1.18', ok: true },
-    { t: '14 May · 09:33:51', actor: 'Dr. P. Withana', action: 'consultation.save', tgt: 'cn_20260514_0028', ip: '10.42.1.18', ok: true },
-    { t: '14 May · 09:30:02', actor: 'system',          action: 'jrissi.threshold', tgt: 'E-002417', ip: '—', ok: true, level: 'warn' },
-    { t: '14 May · 09:24:18', actor: 'B.W.S.S. Nawarathna', action: 'auth.qr_checkin', tgt: 'E-002219 → MR-1', ip: '10.42.1.99', ok: true },
-    { t: '14 May · 09:18:44', actor: 'L. Koralage',     action: 'grn.post',         tgt: 'GRN-2026-0141',   ip: '10.42.2.14', ok: true },
-    { t: '14 May · 08:55:01', actor: 'D. Anuradha',     action: 'user.permission_update', tgt: 'Dr. N. Bandara · +rx_sign', ip: '10.42.0.12', ok: true },
-    { t: '14 May · 08:30:00', actor: 'system',          action: 'forecast.refresh', tgt: '14d horizon · 1,284 employees', ip: '—', ok: true },
-    { t: '14 May · 06:00:00', actor: 'system',          action: 'backup.complete',  tgt: 's3://mras-prod/2026-05-14.tar', ip: '—', ok: true },
-    { t: '13 May · 23:58:11', actor: 'system',          action: 'climate.api_unreachable', tgt: 'weather.gov.lk', ip: '—', ok: false, level: 'err' },
-    { t: '13 May · 17:22:09', actor: 'Dr. P. Withana',  action: 'patient.escalate', tgt: 'E-002417 → OH', ip: '10.42.1.18', ok: true, level: 'warn' },
-  ];
+  const [entries, setEntries] = React.useState([]);
+
+  React.useEffect(() => {
+    api.get('/admin/audit').then(res => {
+      setEntries(res.data.map(e => ({
+        t: new Date(e.created_at).toLocaleString(),
+        actor: e.actor_label,
+        action: e.action,
+        tgt: e.target,
+        ip: e.ip_address || '—',
+        ok: true,
+        level: e.level === 'warn' || e.level === 'error' ? 'err' : 'info'
+      })));
+    }).catch(console.error);
+  }, []);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>

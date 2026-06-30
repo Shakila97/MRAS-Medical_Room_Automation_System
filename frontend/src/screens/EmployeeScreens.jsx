@@ -1,20 +1,56 @@
-﻿/* eslint-disable */
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
 import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
+import { api } from '../api/client';
+
 // ============================================================================
 // 1. WELLNESS HOME (timeline + your health)
 // ============================================================================
 export function EmployeeWellness() {
-  const week = [62, 68, 71, 64, 75, 70, 73];
+  const [loading, setLoading] = useState(true);
+  const [patient, setPatient] = useState(null);
+  const [wellness, setWellness] = useState(null);
+  const [appointments, setAppointments] = useState([]);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [patRes, welRes, apptRes] = await Promise.all([
+          api.get('/patients/me'),
+          api.get('/me/wellness'),
+          api.get('/appointments/me')
+        ]);
+        setPatient(patRes.data);
+        setWellness(welRes.data);
+        setAppointments(apptRes.data);
+      } catch (e) {
+        console.error("Failed to load wellness data:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+  const nextAppt = appointments.find(a => new Date(a.scheduled_at) > new Date() && a.status !== 'CANCELLED');
   const weekLbls = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  if (loading) return <div style={{ padding: 20 }}>Loading wellness...</div>;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
         <div>
-          <div className="type-eyebrow" style={{ marginBottom: 6 }}>Thursday · 14 May 2026</div>
-          <h1 className="type-h1">Good morning, Shashika.</h1>
-          <p className="type-body" style={{ marginTop: 6 }}>You\u2019re trending well. Your next check-in is on Tuesday at 10:00.</p>
+          <div className="type-eyebrow" style={{ marginBottom: 6 }}>{today}</div>
+          <h1 className="type-h1">Good morning, {patient?.full_name?.split(' ')[0] || 'there'}.</h1>
+          {nextAppt ? (
+            <p className="type-body" style={{ marginTop: 6 }}>
+              You’re trending well. Your next check-in is on {new Date(nextAppt.scheduled_at).toLocaleDateString('en-GB', { weekday: 'long' })} at {new Date(nextAppt.scheduled_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}.
+            </p>
+          ) : (
+            <p className="type-body" style={{ marginTop: 6 }}>You’re trending well. You have no upcoming check-ins.</p>
+          )}
         </div>
         <Button kind="primary" icon="qr_code_2">Open my QR</Button>
       </header>
@@ -24,30 +60,38 @@ export function EmployeeWellness() {
           <CardHeader eyebrow="This week" title="Wellness score"
             action={<Chip tone="success" dot>Trending up</Chip>} />
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, marginBottom: 12 }}>
-            <div className="type-clinical" style={{ fontSize: 48, lineHeight: 1 }}>73</div>
+            <div className="type-clinical" style={{ fontSize: 48, lineHeight: 1 }}>{wellness?.score || 72}</div>
             <div className="type-body-s" style={{ paddingBottom: 6 }}>
-              <span style={{ color: 'var(--success-fg)' }}>↑ 4</span> vs last week
+              <span style={{ color: wellness?.score_delta >= 0 ? 'var(--success-fg)' : 'var(--danger-fg)' }}>
+                {wellness?.score_delta >= 0 ? '↑' : '↓'} {Math.abs(wellness?.score_delta || 0)}
+              </span> vs last week
             </div>
           </div>
-          <BarChart data={week} labels={weekLbls} width={520} height={130} color="var(--success)" max={100} />
+          <BarChart data={wellness?.series || [72, 72, 72, 72, 72, 72, 72]} labels={weekLbls} width={520} height={130} color="var(--success)" max={100} />
         </Card>
 
         <Card>
           <CardHeader eyebrow="Next" title="Appointment" />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 14, borderRadius: 10, background: 'var(--bg-canvas)', border: '1px solid var(--border-1)' }}>
-            <div style={{ width: 56, height: 56, borderRadius: 10, background: 'var(--primary)', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
-              <span style={{ font: '500 11px var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.85 }}>Tue</span>
-              <span style={{ font: '700 22px var(--font-sans)', lineHeight: 1 }}>19</span>
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="type-label" style={{ color: 'var(--fg-1)' }}>Routine check-in</div>
-              <div className="type-caption" style={{ marginTop: 2 }}>10:00 · 15 min · Dr. Withana · Room MR-1</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <Button kind="secondary" size="sm" icon="event_repeat" style={{ flex: 1 }}>Reschedule</Button>
-            <Button kind="ghost" size="sm" icon="add_alert" style={{ flex: 1 }}>Add reminder</Button>
-          </div>
+          {nextAppt ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 14, borderRadius: 10, background: 'var(--bg-canvas)', border: '1px solid var(--border-1)' }}>
+                <div style={{ width: 56, height: 56, borderRadius: 10, background: 'var(--primary)', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>
+                  <span style={{ font: '500 11px var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.85 }}>{new Date(nextAppt.scheduled_at).toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                  <span style={{ font: '700 22px var(--font-sans)', lineHeight: 1 }}>{new Date(nextAppt.scheduled_at).getDate()}</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="type-label" style={{ color: 'var(--fg-1)' }}>{nextAppt.notes || 'Routine check-in'}</div>
+                  <div className="type-caption" style={{ marginTop: 2 }}>{new Date(nextAppt.scheduled_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} · {nextAppt.duration_minutes || 15} min · Dr. {nextAppt.doctor_id}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <Button kind="secondary" size="sm" icon="event_repeat" style={{ flex: 1 }}>Reschedule</Button>
+                <Button kind="ghost" size="sm" icon="add_alert" style={{ flex: 1 }}>Add reminder</Button>
+              </div>
+            </>
+          ) : (
+            <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--fg-3)' }}>No upcoming appointments.</div>
+          )}
           <div style={{ marginTop: 14, padding: 12, borderRadius: 8, background: 'var(--info-bg)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
             <Icon name="info" size={20} style={{ color: 'var(--info)', marginTop: 1 }} />
             <div className="type-body-s" style={{ color: 'var(--info-fg)' }}>Your doctor has prepared a pre-visit briefing. You\u2019ll see it the morning of the visit.</div>
@@ -56,21 +100,24 @@ export function EmployeeWellness() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-        {[
-          { i: 'monitor_heart', l: 'Heart rate · resting', v: '72', u: 'bpm', d: [70,72,71,74,72,71,73,72], c: 'var(--success)' },
-          { i: 'air',           l: 'SpO₂',                v: '98', u: '%',   d: [98,97,98,98,97,98,98,98], c: 'var(--success)' },
-          { i: 'directions_run', l: 'Steps · today',       v: '7,432', u: '', d: [6500,7200,6800,7400,7100,7300,7400,7432], c: 'var(--info)' },
-          { i: 'bedtime',        l: 'Sleep · 7-day avg',   v: '7.2', u: 'h', d: [6.8,7.1,7.0,7.4,7.2,7.1,7.3,7.2], c: 'var(--primary)' },
-        ].map((m, i) => (
-          <Card key={i} dense>
-            <div className="type-eyebrow" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-              <Icon name={m.i} size={20} style={{ color: 'var(--primary)', fontSize: 16 }} />
-              {m.l}
-            </div>
-            <div className="type-clinical" style={{ fontSize: 22, marginBottom: 6 }}>{m.v}<span style={{ font: '400 12px var(--font-sans)', color: 'var(--fg-3)', marginLeft: 3 }}>{m.u}</span></div>
-            <Sparkline data={m.d} width={200} height={32} color={m.c} />
-          </Card>
-        ))}
+        {wellness?.metrics?.length > 0 ? wellness.metrics.map((m, i) => {
+          const icon = m.key === 'hr' ? 'monitor_heart' : m.key === 'spo2' ? 'air' : m.key === 'steps' ? 'directions_run' : 'bedtime';
+          const color = m.key === 'hr' ? 'var(--success)' : m.key === 'spo2' ? 'var(--success)' : m.key === 'steps' ? 'var(--info)' : 'var(--primary)';
+          // Generate simulated recent data array based on the current value for the sparkline
+          const sparkData = [m.value * 0.9, m.value, m.value * 1.05, m.value * 0.95, m.value * 1.02, m.value * 0.98, m.value];
+          return (
+            <Card key={i} dense>
+              <div className="type-eyebrow" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <Icon name={icon} size={20} style={{ color: 'var(--primary)', fontSize: 16 }} />
+                {m.label}
+              </div>
+              <div className="type-clinical" style={{ fontSize: 22, marginBottom: 6 }}>{m.value}<span style={{ font: '400 12px var(--font-sans)', color: 'var(--fg-3)', marginLeft: 3 }}>{m.unit}</span></div>
+              <Sparkline data={sparkData} width={200} height={32} color={color} />
+            </Card>
+          );
+        }) : (
+          <div style={{ gridColumn: 'span 4', textAlign: 'center', color: 'var(--fg-3)', padding: 20 }}>No vitals data available.</div>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20 }}>
@@ -123,8 +170,54 @@ export function EmployeeWellness() {
 // 2. APPOINTMENT SCHEDULING + QR CHECK-IN
 // ============================================================================
 export function AppointmentScheduling() {
-  const [date, setDate] = React.useState('2026-05-19');
+  const [date, setDate] = React.useState(new Date().toISOString().split('T')[0]);
   const [slot, setSlot] = React.useState('10:00');
+  const [loading, setLoading] = React.useState(false);
+  const [successAppt, setSuccessAppt] = React.useState(null);
+
+  const handleBook = async () => {
+    setLoading(true);
+    try {
+      // Create a datetime for the scheduled slot
+      const scheduledAt = new Date(`${date}T${slot}:00`).toISOString();
+      const res = await api.post('/appointments', {
+        doctor_id: 2, // Hardcoded doctor ID for now
+        scheduled_at: scheduledAt,
+        duration_minutes: 15,
+        notes: "Routine check-in"
+      });
+      setSuccessAppt(res.data);
+      // Wait to simulate loading, then show toast (or just rely on state)
+    } catch (e) {
+      console.error(e);
+      alert("Failed to book appointment");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (successAppt) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center', paddingTop: 40 }}>
+        <div style={{ width: 64, height: 64, borderRadius: 32, background: 'var(--success-bg)', color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+          <Icon name="check" size={32} />
+        </div>
+        <h1 className="type-h1">Booking confirmed</h1>
+        <p className="type-body" style={{ textAlign: 'center', maxWidth: 400 }}>
+          Your appointment is confirmed for {new Date(successAppt.scheduled_at).toLocaleDateString('en-GB')} at {new Date(successAppt.scheduled_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}.
+        </p>
+        <Card style={{ marginTop: 20, width: 360, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 30 }}>
+          <div className="type-eyebrow" style={{ marginBottom: 20 }}>Your check-in QR code</div>
+          <QrPlaceholder size={180} />
+          <div className="type-caption" style={{ textAlign: 'center', marginTop: 20 }}>
+            Scan this code at the MRAS kiosk when you arrive.
+          </div>
+        </Card>
+        <Button kind="secondary" style={{ marginTop: 20 }} onClick={() => setSuccessAppt(null)}>Book another</Button>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
@@ -196,7 +289,9 @@ export function AppointmentScheduling() {
             <Row label="Doctor" value="Dr. Withana" />
             <Row label="Room" value="MR-1" />
           </div>
-          <Button kind="primary" icon="check" style={{ marginTop: 14, width: '100%', justifyContent: 'center' }}>Confirm booking</Button>
+          <Button kind="primary" icon="check" style={{ marginTop: 14, width: '100%', justifyContent: 'center' }} onClick={handleBook} disabled={loading}>
+            {loading ? 'Booking...' : 'Confirm booking'}
+          </Button>
           <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px dashed var(--border-1)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
             <div className="type-eyebrow">Check-in QR · preview</div>
             <QrPlaceholder size={140} />
@@ -259,5 +354,12 @@ export function KioskCheckIn() {
     </div>
   );
 }
+
+const Row = ({ label, value }) => (
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <span className="type-body-s" style={{ color: 'var(--fg-3)' }}>{label}</span>
+    <span className="type-body" style={{ fontWeight: 500, color: 'var(--fg-1)' }}>{value}</span>
+  </div>
+);
 
 
