@@ -32,6 +32,15 @@ async def jrissi_overview(
     return await get_overview(db)
 
 
+@router.get("/jrissi/stats", summary="Get real workforce JRISSI statistics")
+async def jrissi_stats(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_role(UserRole.DOCTOR)),
+):
+    from src.modules.jrissi_scorer import get_workforce_stats
+    return await get_workforce_stats(db)
+
+
 @router.get("/jrissi/{patient_id}", response_model=JrissiReport,
             summary="Get JRISSI report for a patient")
 async def jrissi_report(
@@ -195,3 +204,26 @@ Be clinical, concise (< 200 words total), and avoid speculation."""
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+# ── Behaviour Correction Engine ───────────────────────────────────────────────
+
+@router.get("/interventions/suggested", summary="Get AI-suggested interventions")
+async def suggested_interventions(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_role(UserRole.DOCTOR)),
+):
+    from src.modules.behaviour_engine import BehaviourEngine
+    engine = BehaviourEngine(db)
+    interventions = await engine.generate_cohort_interventions()
+    return interventions
+
+@router.post("/interventions/push", status_code=201, summary="Push approved interventions")
+async def push_interventions(
+    interventions: list[dict],
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_role(UserRole.DOCTOR)),
+):
+    from src.modules.behaviour_engine import BehaviourEngine
+    engine = BehaviourEngine(db)
+    await engine.push_interventions_to_employees(interventions)
+    return {"status": "ok", "message": f"Pushed {len(interventions)} interventions."}

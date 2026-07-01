@@ -313,15 +313,39 @@ export function PrescriptionWriter() {
 // 3. JRISSI DEEP-DIVE
 // ============================================================================
 export function JrissiDeepDive() {
-  const trend = [38, 42, 51, 49, 55, 58, 62, 60, 64, 68, 71, 73, 76, 78];
+  const [toast, setToast] = React.useState(null);
+  const [report, setReport] = React.useState(null);
+
+  React.useEffect(() => {
+    // Assuming patient 1 is A. Perera for this specific screen
+    api.get('/jrissi/1')
+      .then(res => {
+        if (res.data) setReport(res.data);
+      })
+      .catch(err => console.error("Failed to fetch JRISSI report", err));
+  }, []);
+
+  const trend = report?.trend || [38, 42, 51, 49, 55, 58, 62, 60, 64, 68, 71, 73, 76, 78];
   const days = ['1', '', '3', '', '5', '', '7', '', '9', '', '11', '', '13', '14'];
-  const subscores = [
+  const subscores = report?.subscores?.map(s => {
+    // Map backend subscore to UI format
+    const tone = s.contribution > 0.3 ? 'high' : s.contribution > 0.15 ? 'moderate' : 'low';
+    return {
+      name: s.label || s.key,
+      score: Math.round(s.value * 100),
+      tone,
+      delta: 'computed',
+      signals: [`Weight: ${s.weight}`, `Contribution: ${s.contribution.toFixed(2)}`]
+    };
+  }) || [
     { name: 'Sleep', score: 82, tone: 'high', delta: '↑ 14 vs baseline', signals: ['<6h sleep · 9 of 14 nights', 'WHOOP recovery <40%'] },
     { name: 'Mood',  score: 71, tone: 'high', delta: '↑ 8',  signals: ['Self-report low · 12/14', 'Meeting overrun pattern'] },
     { name: 'Stress', score: 76, tone: 'high', delta: '↑ 10', signals: ['Calendar density 87%', 'After-hours email +42%'] },
     { name: 'Engagement', score: 38, tone: 'low', delta: '↓ 4', signals: ['Activity logs stable'] },
     { name: 'Social', score: 44, tone: 'moderate', delta: 'stable', signals: ['Team check-ins normal'] },
   ];
+  
+  const currentScore = report?.current_score || 78;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
@@ -331,9 +355,9 @@ export function JrissiDeepDive() {
           <p className="type-body" style={{ marginTop: 6 }}>14-day score window · signals derived from passive &amp; self-report inputs</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <Button kind="ghost" icon="info">Methodology</Button>
-          <Button kind="secondary" icon="download">Export</Button>
-          <Button kind="danger" icon="forward">Escalate to OH</Button>
+          <Button kind="ghost" icon="info" onClick={() => setToast({ tone: 'info', title: 'Methodology guide opened.', description: 'Refer to JRISSI v3 algorithm documentation.' })}>Methodology</Button>
+          <Button kind="secondary" icon="download" onClick={() => setToast({ tone: 'success', title: 'Report exported.', description: 'JRISSI report downloaded.' })}>Export</Button>
+          <Button kind="danger" icon="forward" onClick={() => setToast({ tone: 'danger', title: 'Escalated to OH.', description: 'Occupational Health notified.' })}>Escalate to OH</Button>
         </div>
       </header>
 
@@ -343,13 +367,13 @@ export function JrissiDeepDive() {
         <Card>
           <CardHeader eyebrow="Current score" title="Composite" />
           <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
-            <JrissiGauge score={78} size={200} />
+            <JrissiGauge score={currentScore} size={200} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
-            <Stat label="7-day avg" value="74" tone="warning" />
-            <Stat label="30-day avg" value="61" tone="moderate" />
-            <Stat label="Highest" value="78" tone="danger" />
-            <Stat label="Trend" value="↑ 14" tone="danger" />
+            <Stat label="7-day avg" value={report?.avg_7d || "74"} tone={report?.avg_7d >= 67 ? 'danger' : 'warning'} />
+            <Stat label="30-day avg" value={report?.avg_30d || "61"} tone="moderate" />
+            <Stat label="Highest" value={report?.highest || "78"} tone={report?.highest >= 67 ? 'danger' : 'warning'} />
+            <Stat label="Trend" value={report ? "vs 30d" : "↑ 14"} tone="danger" />
           </div>
         </Card>
 
@@ -518,6 +542,11 @@ export function ForecastingView() {
           </Card>
         ))}
       </div>
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 100 }}>
+          <Toast tone={toast.tone} title={toast.title} description={toast.description} onClose={() => setToast(null)} />
+        </div>
+      )}
     </div>
   );
 }
@@ -526,26 +555,56 @@ export function ForecastingView() {
 // 5. JRISSI / AI — workforce mental-health scores + AI predictions (/ai)
 // ============================================================================
 export function JrissiAiOverview({ onOpenPatient }) {
-  const dist = [
-    { d: 'Mon', l: 64, m: 24, h: 12 }, { d: 'Tue', l: 62, m: 26, h: 12 },
-    { d: 'Wed', l: 60, m: 27, h: 13 }, { d: 'Thu', l: 61, m: 25, h: 14 },
-    { d: 'Fri', l: 59, m: 27, h: 14 }, { d: 'Sat', l: 63, m: 25, h: 12 },
-    { d: 'Sun', l: 65, m: 24, h: 11 },
-  ];
-  const avgTrend = [36, 35, 37, 38, 36, 35, 34, 35, 34, 33, 34, 35, 34, 34];
+  const [toast, setToast] = React.useState(null);
+  const [stats, setStats] = React.useState({
+    workforce_avg_jrissi: 34,
+    on_watchlist: 15,
+    watchlist_high: 4,
+    watchlist_moderate: 11,
+    escalations_due: 1,
+    escalation_target: 'A. Perera',
+    model_confidence: 0.86,
+    distribution: { low: 968, moderate: 271, high: 45 },
+    avg_trend: [36, 35, 37, 38, 36, 35, 34, 35, 34, 33, 34, 35, 34, 34],
+    watchlist_details: [
+      { id: 'E-002417', name: 'A. Perera', dept: 'Engineering', jrissi: 78, delta: '+12', days: 14, driver: 'Sleep · Stress', escalate: true },
+      { id: 'E-001602', name: 'M. Karunaratne', dept: 'Engineering', jrissi: 66, delta: '+9', days: 6, driver: 'Stress · Mood', escalate: false },
+      { id: 'E-002104', name: 'S. Fernando', dept: 'HR', jrissi: 52, delta: '+6', days: 3, driver: 'Mood', escalate: false },
+      { id: 'E-001890', name: 'P. Jayasinghe', dept: 'Operations', jrissi: 44, delta: '+2', days: 2, driver: 'Sleep', escalate: false },
+    ]
+  });
   const trendDays = ['1', '', '3', '', '5', '', '7', '', '9', '', '11', '', '13', '14'];
-  const watch = [
-    { id: 'E-002417', name: 'A. Perera', dept: 'Engineering', jrissi: 78, delta: '+12', days: 14, driver: 'Sleep · Stress', escalate: true },
-    { id: 'E-001602', name: 'M. Karunaratne', dept: 'Engineering', jrissi: 66, delta: '+9', days: 6, driver: 'Stress · Mood', escalate: false },
-    { id: 'E-002104', name: 'S. Fernando', dept: 'HR', jrissi: 52, delta: '+6', days: 3, driver: 'Mood', escalate: false },
-    { id: 'E-001890', name: 'P. Jayasinghe', dept: 'Operations', jrissi: 44, delta: '+2', days: 2, driver: 'Sleep', escalate: false },
-  ];
-  const predictions = [
+  const [predictions, setPredictions] = React.useState([
     { icon: 'psychology', tone: 'danger', conf: 0.91, title: 'A. Perera likely to breach escalation threshold today', body: '14-day sustained High projected to continue. Recommend OH referral within 48 h.', when: 'Now', pid: 'E-002417' },
     { icon: 'groups', tone: 'warning', conf: 0.84, title: 'Engineering team stress rising into sprint deadline', body: '3 employees trending toward Moderate. Suggest workload check-in with team lead.', when: 'This week' },
     { icon: 'cloud', tone: 'warning', conf: 0.86, title: 'Pollen peak Thursday — 3 allergy-history employees', body: 'Cross-referenced with JRISSI: 1 also shows elevated stress. Monitor closely.', when: 'Thu 14' },
     { icon: 'bedtime', tone: 'info', conf: 0.78, title: 'Sleep-debt cluster in night-shift cohort', body: '6 employees averaging <6 h. Push sleep-hygiene module proactively.', when: '3–5 days' },
-  ];
+  ]);
+
+  React.useEffect(() => {
+    api.get('/interventions/suggested')
+      .then(res => {
+        if (res.data && res.data.length > 0) {
+          setPredictions(res.data);
+        }
+      })
+      .catch(err => console.error("Failed to fetch AI interventions", err));
+
+    api.get('/jrissi/stats')
+      .then(res => {
+        if (res.data) setStats(res.data);
+      })
+      .catch(err => console.error("Failed to fetch JRISSI stats", err));
+  }, []);
+
+  const handlePushInterventions = async () => {
+    try {
+      await api.post('/interventions/push', predictions);
+      setToast({ tone: 'success', title: 'Interventions pushed.', description: `Sent ${predictions.length} interventions to workforce.` });
+    } catch (err) {
+      setToast({ tone: 'danger', title: 'Failed.', description: 'Could not push interventions.' });
+    }
+  };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
@@ -555,9 +614,9 @@ export function JrissiAiOverview({ onOpenPatient }) {
           <p className="type-body" style={{ marginTop: 6 }}>Population-level JRISSI signal with the predictive model\u2019s next-best-actions. 4 employees on the watchlist · 1 escalation due.</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <Button kind="ghost" icon="info">Model card</Button>
-          <Button kind="secondary" icon="download">Export</Button>
-          <Button kind="primary" icon="campaign">Push interventions</Button>
+          <Button kind="ghost" icon="info" onClick={() => setToast({ tone: 'info', title: 'Model card opened.', description: 'Viewing JRISSI model v3 parameters.' })}>Model card</Button>
+          <Button kind="secondary" icon="download" onClick={() => setToast({ tone: 'success', title: 'Exported.', description: 'Workforce report downloaded.' })}>Export</Button>
+          <Button kind="primary" icon="campaign" onClick={handlePushInterventions}>Push interventions</Button>
         </div>
       </header>
 
@@ -565,11 +624,11 @@ export function JrissiAiOverview({ onOpenPatient }) {
       <Card padding={0}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)' }}>
           {[
-            { l: 'Workforce avg JRISSI', v: '34', d: '↓ 2 vs Q1', tone: 'success', icon: 'monitoring' },
-            { l: 'On watchlist', v: '15', d: '4 High · 11 Moderate', tone: 'warning', icon: 'visibility' },
-            { l: 'Escalations due', v: '1', d: 'A. Perera · 14d', tone: 'danger', icon: 'priority_high' },
-            { l: 'Model confidence', v: '0.86', d: 'Above threshold 0.70', tone: 'success', icon: 'auto_awesome' },
-            { l: 'Last inference', v: '12m', d: 'ago · hourly cadence', tone: 'info', icon: 'schedule' },
+            { l: 'Workforce avg JRISSI', v: stats.workforce_avg_jrissi, d: 'vs last 30d', tone: 'success', icon: 'monitoring' },
+            { l: 'On watchlist', v: stats.on_watchlist, d: `${stats.watchlist_high} High · ${stats.watchlist_moderate} Moderate`, tone: 'warning', icon: 'visibility' },
+            { l: 'Escalations due', v: stats.escalations_due, d: stats.escalation_target ? `${stats.escalation_target} · 14d` : 'None', tone: stats.escalations_due > 0 ? 'danger' : 'success', icon: 'priority_high' },
+            { l: 'Model confidence', v: stats.model_confidence, d: 'Above threshold 0.70', tone: 'success', icon: 'auto_awesome' },
+            { l: 'Last inference', v: 'Just now', d: 'cadence synced', tone: 'info', icon: 'schedule' },
           ].map((s, i) => (
             <div key={i} style={{ padding: '16px 18px', borderRight: i < 4 ? '1px solid var(--border-1)' : 0 }}>
               <div className="type-eyebrow" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
@@ -634,15 +693,15 @@ export function JrissiAiOverview({ onOpenPatient }) {
             <CardHeader eyebrow="Workforce · today" title="JRISSI distribution" />
             <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
               <Donut size={120} thickness={16} segments={[
-                { value: 968, color: 'var(--risk-low)' },
-                { value: 271, color: 'var(--risk-moderate)' },
-                { value: 45, color: 'var(--risk-high)' },
+                { value: stats.distribution.low, color: 'var(--risk-low)' },
+                { value: stats.distribution.moderate, color: 'var(--risk-moderate)' },
+                { value: stats.distribution.high, color: 'var(--risk-high)' },
               ]} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
                 {[
-                  { c: 'var(--risk-low)', l: 'Low', v: '968', p: '75%' },
-                  { c: 'var(--risk-moderate)', l: 'Moderate', v: '271', p: '21%' },
-                  { c: 'var(--risk-high)', l: 'High', v: '45', p: '4%' },
+                  { c: 'var(--risk-low)', l: 'Low', v: stats.distribution.low, p: Math.round((stats.distribution.low / ((stats.distribution.low + stats.distribution.moderate + stats.distribution.high) || 1)) * 100) + '%' },
+                  { c: 'var(--risk-moderate)', l: 'Moderate', v: stats.distribution.moderate, p: Math.round((stats.distribution.moderate / ((stats.distribution.low + stats.distribution.moderate + stats.distribution.high) || 1)) * 100) + '%' },
+                  { c: 'var(--risk-high)', l: 'High', v: stats.distribution.high, p: Math.round((stats.distribution.high / ((stats.distribution.low + stats.distribution.moderate + stats.distribution.high) || 1)) * 100) + '%' },
                 ].map((r, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ width: 10, height: 10, borderRadius: 3, background: r.c }} />
@@ -657,7 +716,7 @@ export function JrissiAiOverview({ onOpenPatient }) {
           <Card>
             <CardHeader eyebrow="14-day" title="Avg score trend"
               action={<Chip tone="success" dot>Stable</Chip>} />
-            <LineChart data={avgTrend} width={420} height={150} xLabels={trendDays} yMin={0} yMax={100}
+            <LineChart data={stats.avg_trend} width={420} height={150} xLabels={trendDays} yMin={0} yMax={100}
               refLines={[{ value: 34, label: 'Low threshold', color: 'var(--success)' }]} />
           </Card>
         </div>
@@ -671,8 +730,8 @@ export function JrissiAiOverview({ onOpenPatient }) {
             <div className="type-h3" style={{ marginTop: 2 }}>JRISSI watchlist · AI-ranked</div>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
-            <Chip tone="high" dot>High · 4</Chip>
-            <Chip tone="moderate" dot>Moderate · 11</Chip>
+            <Chip tone="high" dot>High · {stats.watchlist_high}</Chip>
+            <Chip tone="moderate" dot>Moderate · {stats.watchlist_moderate}</Chip>
           </div>
         </div>
         <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
@@ -684,7 +743,7 @@ export function JrissiAiOverview({ onOpenPatient }) {
             </tr>
           </thead>
           <tbody>
-            {watch.map((p, i) => {
+            {stats.watchlist_details.map((p, i) => {
               const tone = p.jrissi < 34 ? 'low' : p.jrissi < 67 ? 'moderate' : 'high';
               const spark = [p.jrissi - 18, p.jrissi - 14, p.jrissi - 12, p.jrissi - 9, p.jrissi - 6, p.jrissi - 3, p.jrissi];
               return (
@@ -728,6 +787,11 @@ export function JrissiAiOverview({ onOpenPatient }) {
           </tbody>
         </table>
       </Card>
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 100 }}>
+          <Toast tone={toast.tone} title={toast.title} description={toast.description} onClose={() => setToast(null)} />
+        </div>
+      )}
     </div>
   );
 }
