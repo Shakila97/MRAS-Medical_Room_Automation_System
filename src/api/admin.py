@@ -14,12 +14,50 @@ from src.models import AuditLog, Patient, Consultation, Prescription
 from src.modules.auth_service import require_role, get_user_by_id
 from src.modules.auth_service import hash_password
 from src.core.security import hash_password
-from src.schemas.admin import UserSummary, UserInvite, UserUpdate, AuditEntryRead, ReportSummary
+from src.schemas.admin import UserSummary, UserInvite, UserUpdate, AuditEntryRead, ReportSummary, UserStats
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────
+
+@router.get("/users/stats", response_model=UserStats, summary="Get user role statistics")
+async def get_user_stats(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_role(UserRole.ADMIN)),
+):
+    result = await db.execute(select(User.role, User.is_active))
+    users = result.all()
+    
+    stats = {
+        "doctor": {"active": 0, "suspended": 0},
+        "pharmacy": {"active": 0, "suspended": 0},
+        "employee": {"active": 0, "suspended": 0},
+        "admin": {"active": 0, "suspended": 0},
+    }
+    
+    for role, is_active in users:
+        r = role.value if hasattr(role, 'value') else role
+        if r in stats:
+            if is_active:
+                stats[r]["active"] += 1
+            else:
+                stats[r]["suspended"] += 1
+                
+    def make_stat(role, active_suffix, suspended_suffix="suspended"):
+        total = stats[role]["active"] + stats[role]["suspended"]
+        if stats[role]["suspended"] > 0:
+            sub = f"{stats[role]['suspended']} {suspended_suffix}"
+        else:
+            sub = active_suffix
+        return {"total": total, "subtitle": sub}
+        
+    return {
+        "doctors": make_stat("doctor", "All active", "pending"),
+        "pharmacy": make_stat("pharmacy", "All active"),
+        "employees": make_stat("employee", "All active"),
+        "admins": {"total": stats["admin"]["active"] + stats["admin"]["suspended"], "subtitle": "SSO active"}
+    }
 
 @router.get("/users", response_model=List[UserSummary], summary="List all users")
 async def list_users(

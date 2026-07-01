@@ -137,6 +137,20 @@ async def get_patient_by_id(
     return await get_patient(patient_id_int, db)
 
 
+# ── GET /api/patients/{id}/dashboard ──────────────────────────────────────────
+@router.get(
+    "/{patient_id}/dashboard",
+    summary="Get patient dashboard data (vitals, trends, interventions)",
+)
+async def get_patient_dashboard_data(
+    patient_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_role(UserRole.DOCTOR, UserRole.ADMIN)),
+):
+    from src.modules.patient_service import get_patient_dashboard
+    return await get_patient_dashboard(patient_id, db)
+
+
 # ── PUT /api/patients/{id} ────────────────────────────────────────────────────
 @router.put(
     "/{patient_id}",

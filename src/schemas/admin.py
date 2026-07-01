@@ -43,6 +43,16 @@ class AuditEntryRead(BaseModel):
 
     model_config = {"from_attributes": True}
 
+class RoleStat(BaseModel):
+    total: int
+    subtitle: str
+
+class UserStats(BaseModel):
+    doctors: RoleStat
+    pharmacy: RoleStat
+    employees: RoleStat
+    admins: RoleStat
+
 
 class ReportSummary(BaseModel):
     total_patients: int

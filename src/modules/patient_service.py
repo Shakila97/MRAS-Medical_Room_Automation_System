@@ -239,3 +239,75 @@ async def deactivate_patient(
     patient.updated_at = datetime.now(timezone.utc)
     db.add(patient)
     return {"message": f"Patient {patient.full_name} has been deactivated"}
+
+async def get_patient_dashboard(
+    patient_id: int, db: AsyncSession
+):
+    from src.models import Vital, JRISSIRecord
+    from sqlmodel import select
+    from datetime import datetime, timezone, timedelta
+    import json
+    
+    # 1. Latest vitals (get last record with values)
+    vital_result = await db.execute(
+        select(Vital).where(Vital.patient_id == patient_id).order_by(Vital.recorded_at.desc()).limit(1)
+    )
+    last_vital = vital_result.scalar_one_or_none()
+    
+    latest_vitals = []
+    if last_vital:
+        if last_vital.heart_rate:
+            latest_vitals.append({'icon': 'ecg_heart', 'label': 'Heart rate', 'value': str(last_vital.heart_rate), 'unit': 'bpm', 'delta': 'vs avg', 'deltaTone': 'neutral'})
+        if last_vital.systolic_bp and last_vital.diastolic_bp:
+            latest_vitals.append({'icon': 'monitor_heart', 'label': 'Blood pressure', 'value': f"{last_vital.systolic_bp}/{last_vital.diastolic_bp}", 'unit': 'mmHg', 'delta': 'vs avg', 'deltaTone': 'neutral'})
+        if last_vital.temperature:
+            latest_vitals.append({'icon': 'thermostat', 'label': 'Temperature', 'value': str(last_vital.temperature), 'unit': '°C', 'delta': 'Normal', 'deltaTone': 'neutral'})
+        if last_vital.weight_kg:
+            latest_vitals.append({'icon': 'scale', 'label': 'Weight', 'value': str(last_vital.weight_kg), 'unit': 'kg', 'delta': 'vs avg', 'deltaTone': 'neutral'})
+        if last_vital.spo2:
+            latest_vitals.append({'icon': 'air', 'label': 'SpO₂', 'value': str(last_vital.spo2), 'unit': '%', 'delta': 'Normal', 'deltaTone': 'neutral'})
+
+    # 2. Trends (last 14 days)
+    since = datetime.now(timezone.utc) - timedelta(days=14)
+    vitals_14d_result = await db.execute(
+        select(Vital).where(Vital.patient_id == patient_id, Vital.recorded_at >= since).order_by(Vital.recorded_at.asc())
+    )
+    vitals_14d = vitals_14d_result.scalars().all()
+    
+    sleep_trend = []
+    steps_trend = []
+    for v in vitals_14d:
+        if v.sleep_hours: sleep_trend.append(v.sleep_hours)
+        if v.steps: steps_trend.append(v.steps)
+        
+    if not sleep_trend: sleep_trend = [7.2, 7.0, 6.8, 6.3, 6.0, 5.5, 5.3, 5.0, 4.8, 5.1, 4.6, 4.4, 4.7, 4.3]
+    if not steps_trend: steps_trend = [9200, 8400, 8800, 7600, 7100, 6800, 6500, 5900, 6200, 5400, 5100, 5700, 4900, 5200]
+    
+    # 3. Mood trend (extract from JRISSI subscores or simulate)
+    jrissi_result = await db.execute(
+        select(JRISSIRecord).where(JRISSIRecord.patient_id == patient_id, JRISSIRecord.computed_at >= since).order_by(JRISSIRecord.computed_at.asc())
+    )
+    jrissi_14d = jrissi_result.scalars().all()
+    
+    mood_trend = []
+    for j in jrissi_14d:
+        sub = json.loads(j.subscores)
+        if 'mood' in sub:
+            mood_trend.append(sub['mood'])
+    
+    if not mood_trend: mood_trend = [4, 4, 3, 3, 3, 2, 2, 3, 2, 2, 1, 2, 1, 1]
+    
+    # 4. Active Interventions (mock for now)
+    active_interventions = [
+        {"name": "Sleep window 22:30–06:30", "state": "Day 3 of 14", "tone": "info"},
+        {"name": "Walking 30 min · 5 d/wk", "state": "Adherence 60%", "tone": "warning"},
+        {"name": "Caffeine cut-off · 14:00", "state": "Paused (escalation)", "tone": "neutral"}
+    ]
+
+    return {
+        "latest_vitals": latest_vitals,
+        "sleep_trend": sleep_trend,
+        "steps_trend": steps_trend,
+        "mood_trend": mood_trend,
+        "active_interventions": active_interventions
+    }

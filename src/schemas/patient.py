@@ -123,3 +123,16 @@ class CheckInResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+class Intervention(BaseModel):
+    name: str
+    state: str
+    tone: str
+
+class PatientDashboardRead(BaseModel):
+    """Data for the doctor's patient record dashboard."""
+    latest_vitals: list[dict]
+    sleep_trend: list[float]
+    steps_trend: list[int]
+    mood_trend: list[int]
+    active_interventions: list[Intervention]

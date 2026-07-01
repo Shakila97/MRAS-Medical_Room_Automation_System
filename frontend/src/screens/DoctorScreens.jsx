@@ -1,5 +1,5 @@
 /* eslint-disable */
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
 import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -476,15 +476,25 @@ function Stat({ label, value, tone }) {
 // 4. PREDICTIVE FORECASTING
 // ============================================================================
 export function ForecastingView() {
-  const pollen = [22, 30, 28, 35, 48, 62, 78, 71, 64, 52, 41, 38, 32, 28];
-  const heat   = [28, 29, 30, 29, 31, 33, 35, 36, 34, 32, 31, 30, 29, 28];
+  const [forecasts, setForecasts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    api.get('/forecasts').then(res => {
+      setForecasts(res.data);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
+  }, []);
+
   const dayLbls = ['Mon', '', 'Wed', '', 'Fri', '', 'Sun', '', 'Tue', '', 'Thu', '', 'Sat', ''];
-  const forecasts = [
-    { icon: 'cloud', name: 'Pollen', risk: 'moderate', peakDay: 'Thu 14', peakLabel: 'Peak: 78 grains/m³', affected: 3, conditions: ['Allergic rhinitis', 'Asthma'], data: pollen, color: 'var(--warning)' },
-    { icon: 'thermostat', name: 'Heat-stress', risk: 'moderate', peakDay: 'Sat 16', peakLabel: 'Peak: 36 °C feels-like', affected: 2, conditions: ['Hypertension'], data: heat, color: 'var(--warning)' },
-    { icon: 'air', name: 'Air quality', risk: 'low', peakDay: 'Sun 17', peakLabel: 'PM2.5 stable', affected: 0, conditions: [], data: [22, 24, 23, 25, 24, 22, 23, 24, 22, 23, 24, 22, 23, 22], color: 'var(--success)' },
-    { icon: 'water_drop', name: 'Influenza signal', risk: 'low', peakDay: 'next week', peakLabel: 'Local incidence stable', affected: 0, conditions: [], data: [12, 14, 13, 12, 13, 14, 12, 11, 12, 13, 12, 12, 13, 12], color: 'var(--success)' },
-  ];
+
+  if (loading) {
+    return <div style={{ padding: 40 }}><Skeleton rows={10} /></div>;
+  }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
@@ -522,22 +532,22 @@ export function ForecastingView() {
           <Card key={i}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: f.risk === 'moderate' ? 'var(--warning-bg)' : 'var(--success-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name={f.icon} size={24} style={{ color: f.risk === 'moderate' ? 'var(--warning)' : 'var(--success)' }} />
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: f.risk === 'moderate' || f.risk === 'high' ? 'var(--warning-bg)' : 'var(--success-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name={f.kind === 'pollen' ? 'cloud' : f.kind === 'heat' ? 'thermostat' : f.kind === 'air_quality' ? 'air' : 'water_drop'} size={24} style={{ color: f.risk === 'moderate' || f.risk === 'high' ? 'var(--warning)' : 'var(--success)' }} />
                 </div>
                 <div>
-                  <div className="type-eyebrow" style={{ marginBottom: 2 }}>{f.peakDay} · {f.peakLabel}</div>
-                  <div className="type-h3">{f.name}</div>
+                  <div className="type-eyebrow" style={{ marginBottom: 2 }}>{new Date(f.peak_day).toLocaleDateString()} · {f.peak_label}</div>
+                  <div className="type-h3">{f.kind.replace('_', ' ').charAt(0).toUpperCase() + f.kind.replace('_', ' ').slice(1)}</div>
                 </div>
               </div>
-              <Chip tone={f.risk} dot>{f.risk === 'moderate' ? 'Watch' : 'Stable'}</Chip>
+              <Chip tone={f.risk === 'high' ? 'danger' : f.risk === 'moderate' ? 'warning' : 'good'} dot>{f.risk === 'moderate' ? 'Watch' : f.risk === 'high' ? 'Alert' : 'Stable'}</Chip>
             </div>
-            <LineChart data={f.data} width={460} height={120} color={f.color} xLabels={dayLbls} />
+            <LineChart data={f.series} width={460} height={120} color={f.risk === 'moderate' || f.risk === 'high' ? 'var(--warning)' : 'var(--success)'} xLabels={dayLbls} />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--border-1)' }}>
               <div className="type-body-s">
-                {f.affected > 0 ? (<>{f.affected} employees flagged · {f.conditions.join(', ')}</>) : <span style={{ color: 'var(--fg-3)' }}>No employees flagged for this signal.</span>}
+                {f.affected_employees?.length > 0 ? (<>{f.affected_employees.length} employees flagged · {f.related_conditions.join(', ')}</>) : <span style={{ color: 'var(--fg-3)' }}>No employees flagged for this signal.</span>}
               </div>
-              {f.affected > 0 && <Button kind="ghost" size="sm" icon="open_in_new">Review</Button>}
+              {f.affected_employees?.length > 0 && <Button kind="ghost" size="sm" icon="open_in_new">Review</Button>}
             </div>
           </Card>
         ))}
