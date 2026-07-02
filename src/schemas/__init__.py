@@ -3,6 +3,7 @@ MRAS v3.0 — Pydantic Request / Response Schemas
 Separated from DB models to allow independent versioning.
 """
 
+from beanie import PydanticObjectId
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, EmailStr
@@ -34,8 +35,8 @@ class PatientCreate(BaseModel):
 
 
 class PatientRead(PatientCreate):
-    id: int
-    user_id: int
+    id: PydanticObjectId
+    user_id: PydanticObjectId
     created_at: datetime
 
 
@@ -44,15 +45,15 @@ class PatientRead(PatientCreate):
 # ---------------------------------------------------------------------------
 
 class ConsultationCreate(BaseModel):
-    patient_id: int
+    patient_id: PydanticObjectId
     diagnosis: Optional[str] = None
     prescription: Optional[str] = None
     notes: Optional[str] = None
 
 
 class ConsultationRead(ConsultationCreate):
-    id: int
-    doctor_id: int
+    id: PydanticObjectId
+    doctor_id: PydanticObjectId
     visited_at: datetime
 
 
@@ -68,7 +69,7 @@ class InventoryItemCreate(BaseModel):
 
 
 class InventoryItemRead(InventoryItemCreate):
-    id: int
+    id: PydanticObjectId
     created_at: datetime
 
 

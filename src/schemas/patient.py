@@ -1,3 +1,4 @@
+from beanie import PydanticObjectId
 from datetime import datetime, date
 from typing import Optional
 
@@ -66,8 +67,8 @@ class PatientUpdate(BaseModel):
 # ── Response Schemas ──────────────────────────────────────────────────────────
 class PatientRead(BaseModel):
     """Full patient profile response — for doctors."""
-    id: int
-    user_id: int
+    id: PydanticObjectId
+    user_id: PydanticObjectId
     employee_id: str
     full_name: str
     date_of_birth: date
@@ -98,7 +99,7 @@ class PatientRead(BaseModel):
 
 class PatientSummary(BaseModel):
     """Short patient card — for listing and search results."""
-    id: int
+    id: PydanticObjectId
     employee_id: str
     full_name: str
     department: Department
@@ -114,7 +115,7 @@ class PatientSummary(BaseModel):
 class CheckInResponse(BaseModel):
     """Response after a successful QR check-in."""
     message: str
-    patient_id: int
+    patient_id: PydanticObjectId
     employee_id: str
     full_name: str
     checkin_time: datetime

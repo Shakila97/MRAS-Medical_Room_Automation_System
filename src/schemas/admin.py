@@ -1,4 +1,5 @@
 """MRAS — Admin Pydantic schemas"""
+from beanie import PydanticObjectId
 from datetime import datetime
 from typing import Optional, List, Any
 from pydantic import BaseModel
@@ -6,7 +7,7 @@ from src.models import UserRole
 
 
 class UserSummary(BaseModel):
-    id: int
+    id: PydanticObjectId
     email: str
     full_name: str
     employee_id: Optional[str] = None
@@ -32,7 +33,7 @@ class UserUpdate(BaseModel):
 
 
 class AuditEntryRead(BaseModel):
-    id: int
+    id: PydanticObjectId
     actor_label: str
     action: str
     target: str
