@@ -5,11 +5,10 @@ WebSocket connection manager for live push to connected clients.
 """
 import json
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
-from fastapi import WebSocket
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from fastapi import WebSocket, HTTPException, status
+from beanie import PydanticObjectId
 
 from src.models import Notification, NotificationKind, NotificationTone, AuditLog
 from src.models.user import User
@@ -64,7 +63,7 @@ async def create_notification(
     tone: NotificationTone = NotificationTone.INFO,
     cta_label: Optional[str] = None,
     cta_url: Optional[str] = None,
-    db: Optional[AsyncSession] = None,
+    db: Any = None,
 ) -> Notification:
     notif = Notification(
         kind=kind,
@@ -75,75 +74,70 @@ async def create_notification(
         cta_label=cta_label,
         cta_url=cta_url,
     )
-    if db:
-        db.add(notif)
-        await db.flush()
-        await db.refresh(notif)
+    
+    await notif.insert()
 
-        # Push to all connected clients of the target roles
-        event = {
-            "type": "notification",
-            "data": {
-                "id": notif.id,
-                "kind": notif.kind.value,
-                "tone": notif.tone.value,
-                "title": notif.title,
-                "body": notif.body,
-            }
+    # Push to all connected clients of the target roles
+    event = {
+        "type": "notification",
+        "data": {
+            "id": str(notif.id),
+            "kind": notif.kind.value,
+            "tone": notif.tone.value,
+            "title": notif.title,
+            "body": notif.body,
         }
-        await manager.broadcast_to_roles(target_roles, event)
+    }
+    await manager.broadcast_to_roles(target_roles, event)
 
     return notif
 
 
 async def list_notifications(
-    db: AsyncSession,
+    db: Any = None,
     notif_status: Optional[str] = "open",
     skip: int = 0,
     limit: int = 30,
 ) -> List[Notification]:
-    stmt = select(Notification)
+    query = Notification.find()
     if notif_status == "open":
-        stmt = stmt.where(Notification.resolved_at.is_(None))
+        query = query.find(Notification.resolved_at == None)
     elif notif_status == "resolved":
-        stmt = stmt.where(Notification.resolved_at.is_not(None))
-    result = await db.execute(
-        stmt.order_by(Notification.created_at.desc()).offset(skip).limit(limit)
-    )
-    return result.scalars().all()
+        query = query.find(Notification.resolved_at != None)
+        
+    return await query.sort(-Notification.created_at).skip(skip).limit(limit).to_list()
 
 
-async def ack_notification(notif_id: int, user: User, db: AsyncSession) -> Notification:
-    notif = await _get_or_404(notif_id, db)
+async def ack_notification(notif_id: str | PydanticObjectId, user: User, db: Any = None) -> Notification:
+    notif = await _get_or_404(notif_id)
     if notif.acked_at:
         return notif
     notif.acked_at = datetime.now(timezone.utc)
     notif.acked_by = user.id
     notif.stage = "acknowledged"
     notif.stage_index = 1
-    db.add(notif)
+    await notif.save()
     return notif
 
 
-async def resolve_notification(notif_id: int, user: User, db: AsyncSession) -> Notification:
-    notif = await _get_or_404(notif_id, db)
+async def resolve_notification(notif_id: str | PydanticObjectId, user: User, db: Any = None) -> Notification:
+    notif = await _get_or_404(notif_id)
     notif.resolved_at = datetime.now(timezone.utc)
     notif.stage = "resolved"
     notif.stage_index = 2
-    db.add(notif)
+    await notif.save()
 
-    db.add(AuditLog(
+    await AuditLog(
         actor_id=user.id, actor_label=user.email,
-        action="notification.resolve", target=f"notification:{notif_id}",
+        action="notification.resolve", target=f"notification:{str(notif_id)}",
         level="info",
-    ))
+    ).insert()
     return notif
 
 
-async def _get_or_404(notif_id: int, db: AsyncSession) -> Notification:
-    result = await db.execute(select(Notification).where(Notification.id == notif_id))
-    notif = result.scalar_one_or_none()
+async def _get_or_404(notif_id: str | PydanticObjectId) -> Notification:
+    oid = PydanticObjectId(notif_id) if isinstance(notif_id, str) else notif_id
+    notif = await Notification.get(oid)
     if not notif:
-        from fastapi import HTTPException, status
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Notification not found")
     return notif

@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from src.core.config import settings
-from src.core.database import create_db_tables
+from src.core.database import init_db
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 from src.api.auth import router as auth_router
@@ -26,11 +26,10 @@ from src.core.scheduler import start_scheduler, shutdown_scheduler
 async def lifespan(app: FastAPI):
     """
     Runs on startup and shutdown.
-    - Startup: create DB tables (dev only — use Alembic in production)
-    - Shutdown: nothing needed; SQLAlchemy cleans up connections
+    - Startup: initialize MongoDB Beanie ODM
+    - Shutdown: nothing needed
     """
-    if settings.APP_ENV == "development":
-        await create_db_tables()
+    await init_db()
     
     start_scheduler()
     yield

@@ -2,7 +2,8 @@ from datetime import datetime, date
 from enum import Enum
 from typing import Optional
 
-from sqlmodel import Field, SQLModel, Relationship
+from beanie import Document, Indexed, PydanticObjectId
+from pydantic import Field
 
 
 # ── Enums ─────────────────────────────────────────────────────────────────────
@@ -38,20 +39,16 @@ class Department(str, Enum):
 
 
 # ── Patient Table ─────────────────────────────────────────────────────────────
-class Patient(SQLModel, table=True):
+class Patient(Document):
     """
     Employee health profile.
     One Patient record per employee — linked to their User account via user_id.
     """
-    __tablename__ = "patients"
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-
     # ── Link to User account ──────────────────────────────────────────────────
-    user_id: int = Field(foreign_key="users.id", unique=True, index=True)
+    user_id: Indexed(PydanticObjectId, unique=True)
 
     # ── Identity ──────────────────────────────────────────────────────────────
-    employee_id: str = Field(unique=True, index=True, max_length=20)
+    employee_id: Indexed(str, unique=True) = Field(max_length=20)
     full_name: str = Field(max_length=255)
     date_of_birth: date
     gender: Gender
@@ -97,3 +94,6 @@ class Patient(SQLModel, table=True):
             height_m = self.height_cm / 100
             return round(self.weight_kg / (height_m ** 2), 1)
         return None
+
+    class Settings:
+        name = "patients"

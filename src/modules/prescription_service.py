@@ -3,12 +3,12 @@ MRAS v3.0 — Prescription Service
 Drug interaction checking via OpenFDA, prescription CRUD, pharmacy dispense.
 """
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Any
+import re
 
 import httpx
 from fastapi import HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from beanie import PydanticObjectId
 
 from src.models import (
     Drug, Prescription, PrescriptionLine, InventoryItem, GRNLot,
@@ -27,36 +27,37 @@ SEVERITY_RANK = {"none": 0, "low": 1, "moderate": 2, "high": 3}
 # ── Prescription CRUD ─────────────────────────────────────────────────────────
 
 async def create_prescription(
-    data: PrescriptionCreate, doctor: User, db: AsyncSession
+    data: PrescriptionCreate, doctor: User, db: Any = None
 ) -> Prescription:
+    patient_oid = PydanticObjectId(data.patient_id) if isinstance(data.patient_id, str) else data.patient_id
+    consultation_oid = PydanticObjectId(data.consultation_id) if isinstance(data.consultation_id, str) else data.consultation_id
+    
     rx = Prescription(
-        consultation_id=data.consultation_id,
-        patient_id=data.patient_id,
+        consultation_id=consultation_oid,
+        patient_id=patient_oid,
         doctor_id=doctor.id,
         status=ConsultationStatus.DRAFT,
         notes=data.notes,
     )
-    db.add(rx)
-    await db.flush()
-    await db.refresh(rx)
+    await rx.insert()
 
     for line_data in data.lines:
         line = PrescriptionLine(prescription_id=rx.id, **line_data.model_dump())
-        db.add(line)
+        await line.insert()
 
     return rx
 
 
-async def get_prescription(rx_id: int, db: AsyncSession) -> Prescription:
-    result = await db.execute(select(Prescription).where(Prescription.id == rx_id))
-    rx = result.scalar_one_or_none()
+async def get_prescription(rx_id: str | PydanticObjectId, db: Any = None) -> Prescription:
+    oid = PydanticObjectId(rx_id) if isinstance(rx_id, str) else rx_id
+    rx = await Prescription.get(oid)
     if not rx:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Prescription not found")
     return rx
 
 
-async def sign_prescription(rx_id: int, doctor: User, db: AsyncSession) -> Prescription:
-    rx = await get_prescription(rx_id, db)
+async def sign_prescription(rx_id: str | PydanticObjectId, doctor: User, db: Any = None) -> Prescription:
+    rx = await get_prescription(rx_id)
     if rx.doctor_id != doctor.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the prescribing doctor can sign")
     if rx.status == ConsultationStatus.SIGNED:
@@ -64,41 +65,43 @@ async def sign_prescription(rx_id: int, doctor: User, db: AsyncSession) -> Presc
 
     rx.status = ConsultationStatus.SIGNED
     rx.signed_at = datetime.now(timezone.utc)
-    db.add(rx)
+    await rx.save()
 
     # Audit
-    audit = AuditLog(
+    await AuditLog(
         actor_id=doctor.id, actor_label=doctor.email,
-        action="prescription.sign", target=f"prescription:{rx_id}",
+        action="prescription.sign", target=f"prescription:{str(rx_id)}",
         level="info",
-    )
-    db.add(audit)
+    ).insert()
     return rx
 
 
 # ── Drug Interaction Check (OpenFDA) ─────────────────────────────────────────
 
 async def check_interactions(
-    rx_id: int,
-    db: AsyncSession,
+    rx_id: str | PydanticObjectId,
+    db: Any = None,
     patient: Optional[Patient] = None,
 ) -> InteractionCheckResult:
     """
     Check for drug interactions, allergy hits, and duplicates using OpenFDA.
     Falls back gracefully if the OpenFDA API is unavailable.
     """
+    oid = PydanticObjectId(rx_id) if isinstance(rx_id, str) else rx_id
+    
     # Load the prescription and its lines
-    result = await db.execute(
-        select(PrescriptionLine).where(PrescriptionLine.prescription_id == rx_id)
-    )
-    lines = result.scalars().all()
+    lines = await PrescriptionLine.find(PrescriptionLine.prescription_id == oid).to_list()
     if not lines:
         return InteractionCheckResult(severity="none")
 
     # Get drug names
     drug_ids = [line.drug_id for line in lines]
-    drug_result = await db.execute(select(Drug).where(Drug.id.in_(drug_ids)))
-    drugs = {d.id: d for d in drug_result.scalars().all()}
+    drugs = {}
+    for lid in drug_ids:
+        d = await Drug.get(lid)
+        if d:
+            drugs[lid] = d
+            
     drug_names = [drugs[lid].name for lid in drug_ids if lid in drugs]
 
     interactions: List[Interaction] = []
@@ -154,11 +157,10 @@ async def check_interactions(
         pass  # OpenFDA timeout — return what we have
 
     # Persist severity on prescription
-    rx_result = await db.execute(select(Prescription).where(Prescription.id == rx_id))
-    rx = rx_result.scalar_one_or_none()
+    rx = await Prescription.get(oid)
     if rx:
         rx.interaction_severity = worst_severity
-        db.add(rx)
+        await rx.save()
 
     return InteractionCheckResult(
         interactions=interactions,
@@ -171,26 +173,28 @@ async def check_interactions(
 # ── Drug Search ───────────────────────────────────────────────────────────────
 
 async def search_drugs(
-    q: Optional[str], atc: Optional[str], db: AsyncSession,
+    q: Optional[str], atc: Optional[str], db: Any = None,
     skip: int = 0, limit: int = 20,
 ) -> List[Drug]:
-    stmt = select(Drug).where(Drug.is_active == True)
+    query = Drug.find(Drug.is_active == True)
+    
     if q:
-        stmt = stmt.where(Drug.name.ilike(f"%{q}%") | Drug.generic_name.ilike(f"%{q}%"))
+        regex = re.compile(q, re.IGNORECASE)
+        query = query.find({"$or": [{"name": regex}, {"generic_name": regex}]})
     if atc:
-        stmt = stmt.where(Drug.atc_code.ilike(f"{atc}%"))
-    stmt = stmt.offset(skip).limit(limit)
-    result = await db.execute(stmt)
-    return result.scalars().all()
+        regex = re.compile(f"^{atc}", re.IGNORECASE)
+        query = query.find({"atc_code": regex})
+        
+    return await query.skip(skip).limit(limit).to_list()
 
 
 # ── Pharmacy Dispense ─────────────────────────────────────────────────────────
 
 async def dispense_prescription(
-    rx_id: int, pharmacist: User, db: AsyncSession
+    rx_id: str | PydanticObjectId, pharmacist: User, db: Any = None
 ) -> DispenseResult:
     """Dispense a signed prescription — decrements stock using FEFO order."""
-    rx = await get_prescription(rx_id, db)
+    rx = await get_prescription(rx_id)
     if rx.status != ConsultationStatus.SIGNED:
         raise HTTPException(status.HTTP_400_BAD_REQUEST,
                             "Only signed prescriptions can be dispensed")
@@ -198,20 +202,16 @@ async def dispense_prescription(
         raise HTTPException(status.HTTP_409_CONFLICT, "Already dispensed")
 
     # Load lines
-    lines_result = await db.execute(
-        select(PrescriptionLine).where(PrescriptionLine.prescription_id == rx_id)
-    )
-    lines = lines_result.scalars().all()
+    lines = await PrescriptionLine.find(PrescriptionLine.prescription_id == rx.id).to_list()
 
     for line in lines:
         qty_needed = line.duration_days  # Simple: 1 unit per day
         # Deduct from FEFO-ranked lots
-        lots_result = await db.execute(
-            select(GRNLot)
-            .where(GRNLot.drug_id == line.drug_id, GRNLot.remaining_qty > 0)
-            .order_by(GRNLot.expiry_date.asc())  # FEFO
-        )
-        lots = lots_result.scalars().all()
+        lots = await GRNLot.find(
+            GRNLot.drug_id == line.drug_id, 
+            GRNLot.remaining_qty > 0
+        ).sort(+GRNLot.expiry_date).to_list()
+        
         remaining = qty_needed
         for lot in lots:
             if remaining <= 0:
@@ -219,35 +219,31 @@ async def dispense_prescription(
             deduct = min(remaining, lot.remaining_qty)
             lot.remaining_qty -= deduct
             remaining -= deduct
-            db.add(lot)
+            await lot.save()
 
         # Update inventory total
-        inv_result = await db.execute(
-            select(InventoryItem).where(InventoryItem.drug_id == line.drug_id)
-        )
-        inv = inv_result.scalar_one_or_none()
+        inv = await InventoryItem.find_one(InventoryItem.drug_id == line.drug_id)
         if inv:
             inv.total_quantity = max(0, inv.total_quantity - qty_needed)
             inv.updated_at = datetime.now(timezone.utc)
-            db.add(inv)
+            await inv.save()
 
         line.quantity_dispensed = qty_needed
-        db.add(line)
+        await line.save()
 
     now = datetime.now(timezone.utc)
     rx.dispensed_at = now
-    db.add(rx)
+    await rx.save()
 
     # Audit
-    audit = AuditLog(
+    await AuditLog(
         actor_id=pharmacist.id, actor_label=pharmacist.email,
-        action="prescription.dispense", target=f"prescription:{rx_id}",
+        action="prescription.dispense", target=f"prescription:{str(rx.id)}",
         level="info",
-    )
-    db.add(audit)
+    ).insert()
 
     return DispenseResult(
-        prescription_id=rx_id,
+        prescription_id=str(rx.id),
         status="dispensed",
         dispensed_at=now,
         message="Prescription dispensed successfully",

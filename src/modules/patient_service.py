@@ -3,12 +3,13 @@ MRAS v3.0 — Patient Service
 Business logic for employee health profiles, history retrieval, and QR check-in.
 """
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime, timezone, timedelta
+from typing import Optional, Any
+import json
+import re
 
 from fastapi import HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from beanie import PydanticObjectId
 
 from src.models.patient import Patient
 from src.models.user import User, UserRole
@@ -33,35 +34,34 @@ def _to_summary(patient: Patient) -> PatientSummary:
 
 # ── Queries ───────────────────────────────────────────────────────────────────
 async def get_patient_by_id(
-    patient_id: int, db: AsyncSession
+    patient_id: str | PydanticObjectId, db: Any = None
 ) -> Optional[Patient]:
-    result = await db.execute(
-        select(Patient).where(Patient.id == patient_id)
-    )
-    return result.scalar_one_or_none()
+    try:
+        oid = PydanticObjectId(patient_id) if isinstance(patient_id, str) else patient_id
+        return await Patient.get(oid)
+    except Exception:
+        return None
 
 
 async def get_patient_by_employee_id(
-    employee_id: str, db: AsyncSession
+    employee_id: str, db: Any = None
 ) -> Optional[Patient]:
-    result = await db.execute(
-        select(Patient).where(Patient.employee_id == employee_id)
-    )
-    return result.scalar_one_or_none()
+    return await Patient.find_one(Patient.employee_id == employee_id)
 
 
 async def get_patient_by_user_id(
-    user_id: int, db: AsyncSession
+    user_id: str | PydanticObjectId, db: Any = None
 ) -> Optional[Patient]:
-    result = await db.execute(
-        select(Patient).where(Patient.user_id == user_id)
-    )
-    return result.scalar_one_or_none()
+    try:
+        oid = PydanticObjectId(user_id) if isinstance(user_id, str) else user_id
+        return await Patient.find_one(Patient.user_id == oid)
+    except Exception:
+        return None
 
 
 # ── Operations ────────────────────────────────────────────────────────────────
 async def create_patient(
-    data: PatientCreate, user_id: int, db: AsyncSession
+    data: PatientCreate, user_id: str | PydanticObjectId, db: Any = None
 ) -> PatientRead:
     """
     Register a new patient profile.
@@ -69,8 +69,10 @@ async def create_patient(
     Raises:
         400: If a profile already exists for this user or employee ID.
     """
+    oid = PydanticObjectId(user_id) if isinstance(user_id, str) else user_id
+    
     # Check user doesn't already have a profile
-    existing_by_user = await get_patient_by_user_id(user_id, db)
+    existing_by_user = await get_patient_by_user_id(oid)
     if existing_by_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -78,22 +80,20 @@ async def create_patient(
         )
 
     # Check employee ID is unique
-    existing_by_emp = await get_patient_by_employee_id(data.employee_id, db)
+    existing_by_emp = await get_patient_by_employee_id(data.employee_id)
     if existing_by_emp:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Employee ID '{data.employee_id}' is already registered",
         )
 
-    patient = Patient(**data.model_dump(), user_id=user_id)
-    db.add(patient)
-    await db.flush()
-    await db.refresh(patient)
+    patient = Patient(**data.model_dump(), user_id=oid)
+    await patient.insert()
     return _to_read(patient)
 
 
 async def list_patients(
-    db: AsyncSession,
+    db: Any = None,
     department: Optional[str] = None,
     search: Optional[str] = None,
     skip: int = 0,
@@ -103,25 +103,26 @@ async def list_patients(
     List all active patients.
     Optionally filter by department or search by name / employee ID.
     """
-    query = select(Patient).where(Patient.is_active == True)
+    query = Patient.find(Patient.is_active == True)
 
     if department:
-        query = query.where(Patient.department == department)
+        query = query.find(Patient.department == department)
 
     if search:
-        query = query.where(
-            Patient.full_name.ilike(f"%{search}%") |
-            Patient.employee_id.ilike(f"%{search}%")
+        regex = re.compile(search, re.IGNORECASE)
+        query = query.find(
+            {"$or": [
+                {"full_name": regex},
+                {"employee_id": regex}
+            ]}
         )
 
-    query = query.offset(skip).limit(limit).order_by(Patient.full_name)
-    result = await db.execute(query)
-    patients = result.scalars().all()
+    patients = await query.skip(skip).limit(limit).sort(+Patient.full_name).to_list()
     return [_to_summary(p) for p in patients]
 
 
 async def get_patient(
-    patient_id: int, db: AsyncSession
+    patient_id: str | PydanticObjectId, db: Any = None
 ) -> PatientRead:
     """
     Get full patient profile by ID.
@@ -129,7 +130,7 @@ async def get_patient(
     Raises:
         404: If patient not found.
     """
-    patient = await get_patient_by_id(patient_id, db)
+    patient = await get_patient_by_id(patient_id)
     if not patient:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -139,7 +140,7 @@ async def get_patient(
 
 
 async def get_my_profile(
-    user_id: int, db: AsyncSession
+    user_id: str | PydanticObjectId, db: Any = None
 ) -> PatientRead:
     """
     Get the patient profile belonging to the currently logged-in employee.
@@ -147,7 +148,7 @@ async def get_my_profile(
     Raises:
         404: If no profile exists yet for this user.
     """
-    patient = await get_patient_by_user_id(user_id, db)
+    patient = await get_patient_by_user_id(user_id)
     if not patient:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -157,9 +158,9 @@ async def get_my_profile(
 
 
 async def update_patient(
-    patient_id: int,
+    patient_id: str | PydanticObjectId,
     data: PatientUpdate,
-    db: AsyncSession,
+    db: Any = None,
 ) -> PatientRead:
     """
     Update a patient profile.
@@ -167,7 +168,7 @@ async def update_patient(
     Raises:
         404: If patient not found.
     """
-    patient = await get_patient_by_id(patient_id, db)
+    patient = await get_patient_by_id(patient_id)
     if not patient:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -180,14 +181,12 @@ async def update_patient(
         setattr(patient, field, value)
 
     patient.updated_at = datetime.now(timezone.utc)
-    db.add(patient)
-    await db.flush()
-    await db.refresh(patient)
+    await patient.save()
     return _to_read(patient)
 
 
 async def checkin_patient(
-    employee_id: str, db: AsyncSession
+    employee_id: str, db: Any = None
 ) -> dict:
     """
     Process a QR code check-in for an employee.
@@ -196,7 +195,7 @@ async def checkin_patient(
     Raises:
         404: If no patient found with this employee ID.
     """
-    patient = await get_patient_by_employee_id(employee_id, db)
+    patient = await get_patient_by_employee_id(employee_id)
     if not patient or not patient.is_active:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -207,12 +206,11 @@ async def checkin_patient(
     patient.last_checkin = now
     patient.checkin_count += 1
     patient.updated_at = now
-    db.add(patient)
-    await db.flush()
+    await patient.save()
 
     return {
         "message": "Check-in successful. Doctor has been notified.",
-        "patient_id": patient.id,
+        "patient_id": str(patient.id),
         "employee_id": patient.employee_id,
         "full_name": patient.full_name,
         "checkin_time": now,
@@ -221,7 +219,7 @@ async def checkin_patient(
 
 
 async def deactivate_patient(
-    patient_id: int, db: AsyncSession
+    patient_id: str | PydanticObjectId, db: Any = None
 ) -> dict:
     """
     Soft-delete a patient record by marking them inactive.
@@ -229,7 +227,7 @@ async def deactivate_patient(
     Raises:
         404: If patient not found.
     """
-    patient = await get_patient_by_id(patient_id, db)
+    patient = await get_patient_by_id(patient_id)
     if not patient:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -237,22 +235,19 @@ async def deactivate_patient(
         )
     patient.is_active = False
     patient.updated_at = datetime.now(timezone.utc)
-    db.add(patient)
+    await patient.save()
     return {"message": f"Patient {patient.full_name} has been deactivated"}
 
+
 async def get_patient_dashboard(
-    patient_id: int, db: AsyncSession
+    patient_id: str | PydanticObjectId, db: Any = None
 ):
     from src.models import Vital, JRISSIRecord
-    from sqlmodel import select
-    from datetime import datetime, timezone, timedelta
-    import json
     
+    oid = PydanticObjectId(patient_id) if isinstance(patient_id, str) else patient_id
+
     # 1. Latest vitals (get last record with values)
-    vital_result = await db.execute(
-        select(Vital).where(Vital.patient_id == patient_id).order_by(Vital.recorded_at.desc()).limit(1)
-    )
-    last_vital = vital_result.scalar_one_or_none()
+    last_vital = await Vital.find(Vital.patient_id == oid).sort(-Vital.recorded_at).first_or_none()
     
     latest_vitals = []
     if last_vital:
@@ -269,10 +264,7 @@ async def get_patient_dashboard(
 
     # 2. Trends (last 14 days)
     since = datetime.now(timezone.utc) - timedelta(days=14)
-    vitals_14d_result = await db.execute(
-        select(Vital).where(Vital.patient_id == patient_id, Vital.recorded_at >= since).order_by(Vital.recorded_at.asc())
-    )
-    vitals_14d = vitals_14d_result.scalars().all()
+    vitals_14d = await Vital.find(Vital.patient_id == oid, Vital.recorded_at >= since).sort(+Vital.recorded_at).to_list()
     
     sleep_trend = []
     steps_trend = []
@@ -284,14 +276,11 @@ async def get_patient_dashboard(
     if not steps_trend: steps_trend = [9200, 8400, 8800, 7600, 7100, 6800, 6500, 5900, 6200, 5400, 5100, 5700, 4900, 5200]
     
     # 3. Mood trend (extract from JRISSI subscores or simulate)
-    jrissi_result = await db.execute(
-        select(JRISSIRecord).where(JRISSIRecord.patient_id == patient_id, JRISSIRecord.computed_at >= since).order_by(JRISSIRecord.computed_at.asc())
-    )
-    jrissi_14d = jrissi_result.scalars().all()
+    jrissi_14d = await JRISSIRecord.find(JRISSIRecord.patient_id == oid, JRISSIRecord.computed_at >= since).sort(+JRISSIRecord.computed_at).to_list()
     
     mood_trend = []
     for j in jrissi_14d:
-        sub = json.loads(j.subscores)
+        sub = json.loads(j.subscores) if isinstance(j.sub_scores, str) else (j.sub_scores or {})
         if 'mood' in sub:
             mood_trend.append(sub['mood'])
     
@@ -310,4 +299,4 @@ async def get_patient_dashboard(
         "steps_trend": steps_trend,
         "mood_trend": mood_trend,
         "active_interventions": active_interventions
-    }
+    }

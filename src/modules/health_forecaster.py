@@ -5,14 +5,13 @@ environmental health risk forecasts per signal kind.
 """
 import json
 from datetime import datetime, timezone, date, timedelta
-from typing import List, Optional
+from typing import List, Optional, Any
 
 import httpx
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select, delete
+from beanie import PydanticObjectId
 
 from src.models import ForecastSignal, ForecastKind, RiskBand, Patient
-from src.schemas.jrissi import JrissiOverviewItem
+
 
 # Open-Meteo free API
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
@@ -31,7 +30,7 @@ CONDITION_SIGNALS = {
 
 
 class HealthForecaster:
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: Any = None):
         self.db = db
         # Colombo, Sri Lanka coordinates (default — configurable via env)
         self.lat = 6.9271
@@ -46,36 +45,31 @@ class HealthForecaster:
         signals = []
         for kind in ForecastKind:
             signal = self._build_signal(kind, weather)
+            await signal.insert()
             signals.append(signal)
-            self.db.add(signal)
 
         # Purge signals older than 2 days
         cutoff = datetime.now(timezone.utc) - timedelta(days=2)
-        await self.db.execute(
-            delete(ForecastSignal).where(ForecastSignal.generated_at < cutoff)
-        )
+        await ForecastSignal.find(ForecastSignal.generated_at < cutoff).delete()
 
-        await self.db.flush()
         return signals
 
     async def get_current(self) -> List[ForecastSignal]:
         """Return the latest cached forecast signals."""
-        result = await self.db.execute(
-            select(ForecastSignal).order_by(ForecastSignal.generated_at.desc()).limit(10)
-        )
-        signals = result.scalars().all()
+        signals = await ForecastSignal.find().sort(-ForecastSignal.generated_at).limit(10).to_list()
+        
         if not signals:
             # Generate on-demand if cache is empty
             signals = await self.refresh_all()
         return signals
 
-    async def predict(self, patient_id: int) -> dict:
+    async def predict(self, patient_id: str | PydanticObjectId) -> dict:
         """Legacy single-patient forecast (kept for API compatibility)."""
+        oid = PydanticObjectId(patient_id) if isinstance(patient_id, str) else patient_id
+        
         signals = await self.get_current()
-        patient_result = await self.db.execute(
-            select(Patient).where(Patient.id == patient_id)
-        )
-        patient = patient_result.scalar_one_or_none()
+        patient = await Patient.get(oid)
+        
         conditions = patient.conditions if patient else ""
 
         relevant = []
@@ -83,10 +77,12 @@ class HealthForecaster:
             cond_lower = (conditions or "").lower()
             for condition, kinds in CONDITION_SIGNALS.items():
                 if condition in cond_lower and signal.kind in kinds:
+                    # Convert date to string if needed
+                    peak_day_str = signal.peak_day.isoformat() if hasattr(signal.peak_day, 'isoformat') else str(signal.peak_day)
                     relevant.append({
                         "kind": signal.kind,
                         "risk": signal.risk,
-                        "peak_day": signal.peak_day.isoformat(),
+                        "peak_day": peak_day_str,
                         "confidence": signal.confidence,
                     })
                     break
@@ -180,7 +176,7 @@ class HealthForecaster:
             risk = RiskBand.LOW
             confidence = 0.5
 
-        peak_day = date.today() + timedelta(days=peak_idx)
+        peak_day = datetime.combine(date.today() + timedelta(days=peak_idx), datetime.min.time())
 
         return ForecastSignal(
             kind=kind,

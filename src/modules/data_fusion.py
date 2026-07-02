@@ -7,13 +7,13 @@ Merges three independent data streams:
 """
 
 import httpx
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Any
 
 from src.core.config import settings
 
 
 class DataFusion:
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: Any = None):
         self.session = session
 
     async def get_fused_features(self, employee_id: int) -> dict:

@@ -1,8 +1,6 @@
 import json
 import anthropic
 from typing import List, Dict, Any
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select, desc
 from datetime import datetime, timezone, timedelta
 
 from src.core.config import settings
@@ -17,7 +15,7 @@ from src.models import (
 )
 
 class BehaviourEngine:
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: Any = None):
         self.db = db
 
     async def generate_cohort_interventions(self) -> List[Dict[str, Any]]:
@@ -40,47 +38,60 @@ class BehaviourEngine:
             ]
 
         # 1. Fetch High/Moderate JRISSI records (latest per patient)
-        stmt_jrissi = (
-            select(JRISSIRecord, Patient)
-            .join(Patient, Patient.id == JRISSIRecord.patient_id)
-            .where(JRISSIRecord.risk_band.in_([RiskBand.HIGH, RiskBand.MODERATE]))
-            .order_by(desc(JRISSIRecord.computed_at))
-            .limit(20)
-        )
-        result_jrissi = await self.db.execute(stmt_jrissi)
-        jrissi_data = result_jrissi.all()
+        jrissi_records = await JRISSIRecord.find(
+            JRISSIRecord.risk_band.in_([RiskBand.HIGH, RiskBand.MODERATE])
+        ).sort(-JRISSIRecord.computed_at).limit(20).to_list()
         
         # Deduplicate to get the latest per patient
         seen_patients = set()
         at_risk_profiles = []
-        for j_record, patient in jrissi_data:
-            if patient.id not in seen_patients:
-                seen_patients.add(patient.id)
-                at_risk_profiles.append({
-                    "patient_id": patient.id,
-                    "employee_id": patient.employee_id,
-                    "department": patient.department,
-                    "mhrs_score": j_record.mhrs,
-                    "risk_band": j_record.risk_band.value,
-                    "drivers": j_record.drivers
-                })
+        for j_record in jrissi_records:
+            if j_record.patient_id not in seen_patients:
+                seen_patients.add(j_record.patient_id)
+                patient = await Patient.get(j_record.patient_id)
+                if patient:
+                    # 'drivers' does not exist directly on JRISSIRecord; usually sub_scores is used
+                    drivers = "Unknown"
+                    if j_record.sub_scores:
+                        try:
+                            raw = json.loads(j_record.sub_scores) if isinstance(j_record.sub_scores, str) else j_record.sub_scores
+                            sorted_subs = sorted(raw.items(), key=lambda x: x[1]["contribution"], reverse=True)
+                            top = [k for k, v in sorted_subs[:2]]
+                            drivers = " · ".join(top)
+                        except Exception:
+                            pass
+                    
+                    at_risk_profiles.append({
+                        "patient_id": str(patient.id),
+                        "employee_id": patient.employee_id,
+                        "department": patient.department,
+                        "mhrs_score": j_record.mhrs,
+                        "risk_band": j_record.risk_band.value,
+                        "drivers": drivers
+                    })
 
         # 2. Fetch recent forecast signals
         recent_cutoff = datetime.now(timezone.utc) - timedelta(days=3)
-        stmt_forecast = (
-            select(ForecastSignal)
-            .where(ForecastSignal.generated_at >= recent_cutoff)
-            .order_by(desc(ForecastSignal.generated_at))
-            .limit(5)
-        )
-        result_forecast = await self.db.execute(stmt_forecast)
+        forecast_signals = await ForecastSignal.find(
+            ForecastSignal.generated_at >= recent_cutoff
+        ).sort(-ForecastSignal.generated_at).limit(5).to_list()
+        
         forecasts = []
-        for f in result_forecast.scalars().all():
+        for f in forecast_signals:
+            rel_cond = f.related_conditions
+            if isinstance(rel_cond, str):
+                try:
+                    rel_cond = json.loads(rel_cond)
+                except Exception:
+                    rel_cond = []
+            elif not rel_cond:
+                rel_cond = []
+                
             forecasts.append({
                 "kind": f.kind.value,
                 "risk": f.risk.value,
                 "peak_label": f.peak_label,
-                "related_conditions": json.loads(f.related_conditions) if f.related_conditions else []
+                "related_conditions": rel_cond
             })
 
         # 3. Construct the prompt
@@ -104,7 +115,7 @@ Instructions:
    - "body": a concise 2-sentence description of the intervention
    - "when": timeframe string (e.g. "Now", "This week")
    - "pid": (Optional) the employee_id if it targets a specific individual
-   - "target_patient_ids": (Optional) an array of integer patient_ids to target
+   - "target_patient_ids": (Optional) an array of string patient_ids to target
 
 Return ONLY valid JSON.
 """
@@ -153,7 +164,6 @@ Return ONLY valid JSON.
                 body=body,
                 target_role='["employee"]',
             )
-            self.db.add(notif)
+            await notif.insert()
             
-        await self.db.commit()
         return True

@@ -6,12 +6,11 @@ import json
 from typing import List, Optional
 
 import anthropic
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
+from beanie import PydanticObjectId
 
 from src.core.config import settings
-from src.core.database import get_db
 from src.models.user import User, UserRole
 from src.modules.auth_service import require_role
 from src.modules.jrissi_scorer import JRISSIScorer, build_report, get_overview
@@ -26,42 +25,38 @@ router = APIRouter(tags=["Intelligence"])
 @router.get("/jrissi/overview", response_model=List[JrissiOverviewItem],
             summary="JRISSI watchlist — all patients ranked by risk")
 async def jrissi_overview(
-    db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.DOCTOR)),
 ):
-    return await get_overview(db)
+    return await get_overview()
 
 
 @router.get("/jrissi/stats", summary="Get real workforce JRISSI statistics")
 async def jrissi_stats(
-    db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.DOCTOR)),
 ):
     from src.modules.jrissi_scorer import get_workforce_stats
-    return await get_workforce_stats(db)
+    return await get_workforce_stats()
 
 
 @router.get("/jrissi/{patient_id}", response_model=JrissiReport,
             summary="Get JRISSI report for a patient")
 async def jrissi_report(
-    patient_id: int,
+    patient_id: str,
     window: int = Query(default=14, ge=7, le=90, description="Days"),
-    db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.DOCTOR)),
 ):
     # Trigger a fresh compute then return the report
     if settings.ENABLE_ML_PREDICTIONS:
-        scorer = JRISSIScorer(db)
+        scorer = JRISSIScorer()
         await scorer.compute(patient_id, window_days=window)
-    return await build_report(patient_id, db, window)
+    return await build_report(patient_id, window_days=window)
 
 
 @router.post("/jrissi/{patient_id}/escalate", status_code=201,
              summary="Manually escalate a patient")
 async def escalate(
-    patient_id: int,
+    patient_id: str,
     data: EscalationCreate,
-    db: AsyncSession = Depends(get_db),
     doctor: User = Depends(require_role(UserRole.DOCTOR)),
 ):
     from src.models import Notification, NotificationKind, NotificationTone
@@ -72,9 +67,8 @@ async def escalate(
         body=data.reason,
         target_role='["doctor", "admin"]',
     )
-    db.add(notif)
-    await db.flush()
-    return {"patient_id": patient_id, "notification_id": notif.id, "reason": data.reason}
+    await notif.insert()
+    return {"patient_id": patient_id, "notification_id": str(notif.id), "reason": data.reason}
 
 
 # ── Forecasting ───────────────────────────────────────────────────────────────
@@ -82,25 +76,32 @@ async def escalate(
 @router.get("/forecasts", summary="14-day environmental health forecasts")
 async def forecasts(
     horizon: int = Query(default=14, ge=7, le=30),
-    db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.DOCTOR, UserRole.ADMIN)),
 ):
-    forecaster = HealthForecaster(db)
+    forecaster = HealthForecaster()
     signals = await forecaster.get_current()
     result = []
     for s in signals:
-        series = json.loads(s.series)[:horizon]
+        series = json.loads(s.series) if isinstance(s.series, str) else s.series
+        series = series[:horizon]
+        
+        aff_emp = json.loads(s.affected_employees) if isinstance(s.affected_employees, str) else s.affected_employees
+        rel_cond = json.loads(s.related_conditions) if isinstance(s.related_conditions, str) else s.related_conditions
+        
+        peak_day_str = s.peak_day.isoformat() if hasattr(s.peak_day, 'isoformat') else str(s.peak_day)
+        gen_at_str = s.generated_at.isoformat() if hasattr(s.generated_at, 'isoformat') else str(s.generated_at)
+        
         result.append({
-            "id": s.id,
+            "id": str(s.id),
             "kind": s.kind.value,
             "risk": s.risk.value,
-            "peak_day": s.peak_day.isoformat(),
+            "peak_day": peak_day_str,
             "peak_label": s.peak_label,
             "series": series,
             "confidence": s.confidence,
-            "affected_employees": json.loads(s.affected_employees),
-            "related_conditions": json.loads(s.related_conditions),
-            "generated_at": s.generated_at.isoformat(),
+            "affected_employees": aff_emp,
+            "related_conditions": rel_cond,
+            "generated_at": gen_at_str,
         })
     return result
 
@@ -108,14 +109,14 @@ async def forecasts(
 @router.post("/forecasts/{signal_id}/notify", status_code=204,
              summary="Push pre-alert notifications to affected employees")
 async def notify_forecast(
-    signal_id: int,
-    db: AsyncSession = Depends(get_db),
+    signal_id: str,
     _: User = Depends(require_role(UserRole.DOCTOR, UserRole.ADMIN)),
 ):
-    from sqlmodel import select
     from src.models import ForecastSignal, Notification, NotificationKind, NotificationTone
-    result = await db.execute(select(ForecastSignal).where(ForecastSignal.id == signal_id))
-    signal = result.scalar_one_or_none()
+    
+    oid = PydanticObjectId(signal_id) if isinstance(signal_id, str) else signal_id
+    signal = await ForecastSignal.get(oid)
+    
     if signal:
         notif = Notification(
             kind=NotificationKind.FORECAST_WATCH,
@@ -125,7 +126,7 @@ async def notify_forecast(
                  f"Employees with related conditions have been flagged.",
             target_role='["employee", "doctor"]',
         )
-        db.add(notif)
+        await notif.insert()
     return None
 
 
@@ -134,47 +135,36 @@ async def notify_forecast(
 @router.get("/briefing/{patient_id}",
             summary="AI pre-visit briefing (streamed via SSE)")
 async def ai_briefing(
-    patient_id: int,
-    db: AsyncSession = Depends(get_db),
+    patient_id: str,
     doctor: User = Depends(require_role(UserRole.DOCTOR)),
 ):
     if not settings.ENABLE_AI_BRIEFING or not settings.ANTHROPIC_API_KEY:
         return {"briefing": "AI briefing not enabled. Set ANTHROPIC_API_KEY in .env"}
 
     # Load patient context
-    from sqlmodel import select
-    from src.models import Patient, Consultation, Prescription, JRISSIRecord
+    from src.models import Patient, Consultation, JRISSIRecord
 
-    patient_result = await db.execute(select(Patient).where(Patient.id == patient_id))
-    patient = patient_result.scalar_one_or_none()
+    oid = PydanticObjectId(patient_id) if isinstance(patient_id, str) else patient_id
+    patient = await Patient.get(oid)
     if not patient:
-        from fastapi import HTTPException, status
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Patient not found")
 
     # Latest JRISSI
-    jrissi_result = await db.execute(
-        select(JRISSIRecord)
-        .where(JRISSIRecord.patient_id == patient_id)
-        .order_by(JRISSIRecord.computed_at.desc())
-        .limit(1)
-    )
-    jrissi = jrissi_result.scalar_one_or_none()
+    jrissi = await JRISSIRecord.find(
+        JRISSIRecord.patient_id == oid
+    ).sort(-JRISSIRecord.computed_at).first_or_none()
 
     # Last consultation
-    consult_result = await db.execute(
-        select(Consultation)
-        .where(Consultation.patient_id == patient_id)
-        .order_by(Consultation.started_at.desc())
-        .limit(1)
-    )
-    last_consult = consult_result.scalar_one_or_none()
+    last_consult = await Consultation.find(
+        Consultation.patient_id == oid
+    ).sort(-Consultation.started_at).first_or_none()
 
     prompt = f"""You are a clinical assistant briefing Dr. {doctor.full_name} before a consultation.
 
 Patient: {patient.full_name}
 Employee ID: {patient.employee_id}
-Department: {patient.department or 'Unknown'}
-Blood type: {patient.blood_type or 'Unknown'}
+Department: {getattr(patient, 'department', 'Unknown')}
+Blood type: {getattr(patient, 'blood_type', 'Unknown')}
 Allergies: {patient.allergies or 'None documented'}
 Known conditions: {patient.conditions or 'None documented'}
 JRISSI score: {jrissi.mhrs if jrissi else 'Not computed'} ({jrissi.risk_band.value if jrissi else 'unknown'} risk)
@@ -209,21 +199,19 @@ Be clinical, concise (< 200 words total), and avoid speculation."""
 
 @router.get("/interventions/suggested", summary="Get AI-suggested interventions")
 async def suggested_interventions(
-    db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.DOCTOR)),
 ):
     from src.modules.behaviour_engine import BehaviourEngine
-    engine = BehaviourEngine(db)
+    engine = BehaviourEngine()
     interventions = await engine.generate_cohort_interventions()
     return interventions
 
 @router.post("/interventions/push", status_code=201, summary="Push approved interventions")
 async def push_interventions(
     interventions: list[dict],
-    db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.DOCTOR)),
 ):
     from src.modules.behaviour_engine import BehaviourEngine
-    engine = BehaviourEngine(db)
+    engine = BehaviourEngine()
     await engine.push_interventions_to_employees(interventions)
     return {"status": "ok", "message": f"Pushed {len(interventions)} interventions."}

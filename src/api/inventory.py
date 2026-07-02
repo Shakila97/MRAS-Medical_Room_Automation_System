@@ -5,9 +5,7 @@ Stock list, expiry watch, GRN receive/post, pharmacy dispense queue.
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.database import get_db
 from src.models.user import User, UserRole
 from src.modules.auth_service import require_role
 from src.modules.inventory_service import (
@@ -28,10 +26,9 @@ async def list_items(
     expiring_within_days: Optional[int] = Query(default=None),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=100),
-    db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.PHARMACY, UserRole.DOCTOR, UserRole.ADMIN)),
 ):
-    items = await list_inventory(db, q, status, expiring_within_days, skip, limit)
+    items = await list_inventory(q=q, status_filter=status, expiring_within_days=expiring_within_days, skip=skip, limit=limit)
     return [
         InventoryItemRead(
             **item.model_dump(),
@@ -47,38 +44,34 @@ async def list_items(
             summary="Items expiring within N days (FEFO order)")
 async def expiring(
     days: int = Query(default=90, ge=1, le=365),
-    db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.PHARMACY, UserRole.ADMIN)),
 ):
-    return await get_expiring(db, days)
+    return await get_expiring(days=days)
 
 
 @router.post("/grn", response_model=GRNRead, status_code=201,
              summary="Create a draft GRN")
 async def create(
     data: GRNCreate,
-    db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role(UserRole.PHARMACY, UserRole.ADMIN)),
 ):
-    return await create_grn(data, user, db)
+    return await create_grn(data, user)
 
 
 @router.post("/grn/{grn_id}/lots", response_model=GRNRead,
              summary="Add a lot to a draft GRN")
 async def add(
-    grn_id: int,
+    grn_id: str,
     lot_data: GRNLotCreate,
-    db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role(UserRole.PHARMACY, UserRole.ADMIN)),
 ):
-    return await add_lot(grn_id, lot_data, db)
+    return await add_lot(grn_id, lot_data)
 
 
 @router.post("/grn/{grn_id}/post", response_model=GRNRead,
              summary="Post GRN — updates inventory & FEFO ranks")
 async def post(
-    grn_id: int,
-    db: AsyncSession = Depends(get_db),
+    grn_id: str,
     user: User = Depends(require_role(UserRole.PHARMACY, UserRole.ADMIN)),
 ):
-    return await post_grn(grn_id, user, db)
+    return await post_grn(grn_id, user)
