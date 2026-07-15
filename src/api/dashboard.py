@@ -12,7 +12,7 @@ from src.models import (
 )
 from src.modules.auth_service import require_role
 
-router = APIRouter(tags=["Dashboard"])
+router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 @router.get("/admin")
 async def get_admin_dashboard(current_user: User = Depends(require_role(UserRole.ADMIN))):
