@@ -1,4 +1,5 @@
 """MRAS — Consultation Pydantic schemas"""
+from beanie import PydanticObjectId
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
@@ -13,7 +14,7 @@ class SOAPFields(BaseModel):
 
 
 class ConsultationCreate(BaseModel):
-    patient_id: int
+    patient_id: PydanticObjectId
     vitals: Optional[dict] = None
 
 
@@ -36,9 +37,9 @@ class VitalRead(BaseModel):
 
 
 class ConsultationRead(BaseModel):
-    id: int
-    patient_id: int
-    doctor_id: int
+    id: PydanticObjectId
+    patient_id: PydanticObjectId
+    doctor_id: PydanticObjectId
     subjective: Optional[str] = None
     objective: Optional[str] = None
     assessment: Optional[str] = None

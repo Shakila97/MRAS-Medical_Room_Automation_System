@@ -7,11 +7,22 @@ import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, 
 // ============================================================================
 export function AdminUsers() {
   const [users, setUsers] = React.useState([]);
+  const [stats, setStats] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     fetchUsers();
+    fetchStats();
   }, []);
+
+  const fetchStats = async () => {
+    try {
+      const res = await api.get('/admin/users/stats');
+      setStats(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -19,7 +30,7 @@ export function AdminUsers() {
       setUsers(res.data.map(u => ({
         name: u.full_name,
         email: u.email,
-        role: u.role.charAt(0).toUpperCase() + u.role.slice(1),
+        role: u.role === 'pharmacy_staff' ? 'Pharmacy' : u.role.charAt(0).toUpperCase() + u.role.slice(1),
         status: u.is_active ? 'Active' : 'Suspended',
         last: u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never',
         perms: u.role === 'admin' ? ['All'] : ['Standard']
@@ -53,7 +64,9 @@ export function AdminUsers() {
         <div>
           <div className="type-eyebrow" style={{ marginBottom: 6 }}>Admin · console</div>
           <h1 className="type-h1">Users &amp; roles</h1>
-          <p className="type-body" style={{ marginTop: 6 }}>1,284 active employees · 12 staff · 3 admins · SSO via corporate OIDC.</p>
+          <p className="type-body" style={{ marginTop: 6 }}>
+            {stats ? `${stats.employees.total} employees · ${stats.doctors.total + stats.pharmacy.total} staff · ${stats.admins.total} admins · SSO via corporate OIDC.` : "Loading..."}
+          </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Button kind="ghost" icon="upload_file">Bulk import</Button>
@@ -64,10 +77,10 @@ export function AdminUsers() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
         {[
-          { l: 'Doctors',   v: '4',     d: '+1 pending' },
-          { l: 'Pharmacy',  v: '3',     d: 'All active' },
-          { l: 'Employees', v: '1,284', d: '12 suspended' },
-          { l: 'Admins',    v: '3',     d: 'SSO required' },
+          { l: 'Doctors',   v: stats?.doctors?.total || '-',     d: stats?.doctors?.subtitle || '-' },
+          { l: 'Pharmacy',  v: stats?.pharmacy?.total || '-',    d: stats?.pharmacy?.subtitle || '-' },
+          { l: 'Employees', v: stats?.employees?.total || '-',   d: stats?.employees?.subtitle || '-' },
+          { l: 'Admins',    v: stats?.admins?.total || '-',      d: stats?.admins?.subtitle || '-' },
         ].map((s, i) => (
           <Card key={i} dense>
             <div className="type-eyebrow" style={{ marginBottom: 4 }}>{s.l}</div>

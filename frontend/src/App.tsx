@@ -15,7 +15,7 @@ import { SoapEditor, PrescriptionWriter, JrissiDeepDive, ForecastingView, Jrissi
 
 // ── Employee screens
 import { EmployeeHome } from './screens/EmployeeHome.jsx';
-import { EmployeeWellness, AppointmentScheduling, KioskCheckIn } from './screens/EmployeeScreens.jsx';
+import { EmployeeWellness, DailyCheckIn, AppointmentScheduling, KioskCheckIn } from './screens/EmployeeScreens.jsx';
 
 // ── Pharmacy screens
 import { PharmacyDashboard } from './screens/PharmacyDashboard.jsx';
@@ -76,7 +76,7 @@ export default function App() {
         {/* ── Doctor ── */}
         <Route path="/doctor" element={<Navigate to="/doctor/dashboard" replace />} />
         <Route path="/doctor/dashboard"     element={<RoleLayout role="doctor"><DoctorDashboard onOpenPatient={() => {}} /></RoleLayout>} />
-        <Route path="/doctor/patients"      element={<RoleLayout role="doctor"><PatientRecord patientId="E-002417" onBack={() => {}} /></RoleLayout>} />
+        <Route path="/doctor/patients"      element={<RoleLayout role="doctor"><PatientRecord patientId={1} onBack={() => window.history.back()} /></RoleLayout>} />
         <Route path="/doctor/consultations" element={<RoleLayout role="doctor"><SoapEditor /></RoleLayout>} />
         <Route path="/doctor/prescriptions" element={<RoleLayout role="doctor"><PrescriptionWriter /></RoleLayout>} />
         <Route path="/doctor/jrissi"        element={<RoleLayout role="doctor"><JrissiDeepDive /></RoleLayout>} />
@@ -87,6 +87,7 @@ export default function App() {
         {/* ── Employee ── */}
         <Route path="/employee" element={<Navigate to="/employee/home" replace />} />
         <Route path="/employee/home"    element={<RoleLayout role="employee"><EmployeeWellness /></RoleLayout>} />
+        <Route path="/employee/vitals"  element={<RoleLayout role="employee"><DailyCheckIn /></RoleLayout>} />
         <Route path="/employee/checkin" element={<RoleLayout role="employee"><AppointmentScheduling /></RoleLayout>} />
         <Route path="/employee/health"  element={<RoleLayout role="employee"><KioskCheckIn /></RoleLayout>} />
         <Route path="/employee/history" element={<RoleLayout role="employee"><EmployeeHome onCheckIn={() => {}} /></RoleLayout>} />

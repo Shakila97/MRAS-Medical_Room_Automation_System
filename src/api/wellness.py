@@ -9,18 +9,16 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from jose import jwt
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from beanie import PydanticObjectId
 
 from src.core.config import settings
-from src.core.database import get_db
 from src.models.user import User, UserRole
 from src.models import Patient, Appointment, AppointmentStatus, Vital
 from src.modules.auth_service import get_current_user, require_role
 from src.modules.notification_engine import manager
 from src.schemas.wellness import (
     WellnessHome, Metric, AppointmentCreate, AppointmentRead,
-    CheckInRequest, CheckInResponse,
+    CheckInRequest, CheckInResponse, VitalSubmit, VitalRead,
 )
 
 router = APIRouter(tags=["Wellness & Appointments"])
@@ -32,23 +30,20 @@ router = APIRouter(tags=["Wellness & Appointments"])
             summary="My wellness summary")
 async def my_wellness(
     window: str = Query(default="7d"),
-    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     days = int(window.replace("d", ""))
     since = datetime.now(timezone.utc) - timedelta(days=days)
 
-    patient_result = await db.execute(
-        select(Patient).where(Patient.user_id == user.id)
-    )
-    patient = patient_result.scalar_one_or_none()
+    patient = await Patient.find_one(Patient.user_id == user.id)
 
-    vitals_result = await db.execute(
-        select(Vital)
-        .where(Vital.patient_id == patient.id if patient else -1, Vital.recorded_at >= since)
-        .order_by(Vital.recorded_at.asc())
-    )
-    vitals = vitals_result.scalars().all() if patient else []
+    if patient:
+        vitals = await Vital.find(
+            Vital.patient_id == patient.id, 
+            Vital.recorded_at >= since
+        ).sort(+Vital.recorded_at).to_list()
+    else:
+        vitals = []
 
     # Build simulated wellness score from vitals
     scores = []
@@ -92,34 +87,63 @@ async def my_wellness(
     )
 
 
+@router.post("/me/vitals", response_model=VitalRead, status_code=201,
+             summary="Employee daily health check-in")
+async def submit_vitals(
+    data: VitalSubmit,
+    user: User = Depends(get_current_user),
+):
+    patient = await Patient.find_one(Patient.user_id == user.id)
+    if not patient:
+        from fastapi import HTTPException, status as http_status
+        raise HTTPException(http_status.HTTP_404_NOT_FOUND, "Patient profile not found")
+
+    vital = Vital(
+        patient_id=patient.id,
+        heart_rate=data.heart_rate,
+        spo2=data.spo2,
+        temperature=data.temperature,
+        weight_kg=data.weight_kg,
+        steps=data.steps,
+        sleep_hours=data.sleep_hours,
+        source="self-report",
+        recorded_at=datetime.now(timezone.utc),
+    )
+    await vital.insert()
+    return VitalRead(
+        heart_rate=vital.heart_rate,
+        spo2=vital.spo2,
+        temperature=vital.temperature,
+        weight_kg=vital.weight_kg,
+        steps=vital.steps,
+        sleep_hours=vital.sleep_hours,
+        source=vital.source,
+        recorded_at=vital.recorded_at,
+    )
+
+
 # ── Appointments ──────────────────────────────────────────────────────────────
 
 @router.get("/appointments/me", response_model=List[AppointmentRead], summary="My upcoming appointments")
 async def my_appointments(
-    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    patient_result = await db.execute(select(Patient).where(Patient.user_id == user.id))
-    patient = patient_result.scalar_one_or_none()
+    patient = await Patient.find_one(Patient.user_id == user.id)
     if not patient:
         return []
 
-    now = datetime.now(timezone.utc)
     # Return both past and future for the timeline, ordered by date desc
-    result = await db.execute(
-        select(Appointment)
-        .where(Appointment.patient_id == patient.id)
-        .order_by(Appointment.scheduled_at.desc())
-        .limit(10)
-    )
-    return result.scalars().all()
+    appointments = await Appointment.find(
+        Appointment.patient_id == patient.id
+    ).sort(-Appointment.scheduled_at).limit(10).to_list()
+    
+    return appointments
 
 
 @router.get("/appointments/availability", summary="Available appointment slots")
 async def availability(
     date: Optional[str] = Query(default=None),
     duration: int = Query(default=15),
-    db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
     """Returns simulated available slots. Wire to real scheduling in production."""
@@ -140,68 +164,64 @@ async def availability(
              summary="Book an appointment + issue QR token")
 async def book_appointment(
     data: AppointmentCreate,
-    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    patient_result = await db.execute(select(Patient).where(Patient.user_id == user.id))
-    patient = patient_result.scalar_one_or_none()
+    patient = await Patient.find_one(Patient.user_id == user.id)
     if not patient:
         from fastapi import HTTPException, status
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Patient profile not found")
 
+    doctor_oid = PydanticObjectId(data.doctor_id) if isinstance(data.doctor_id, str) else data.doctor_id
+
     appt = Appointment(
         patient_id=patient.id,
-        doctor_id=data.doctor_id,
+        doctor_id=doctor_oid,
         scheduled_at=data.scheduled_at,
         duration_minutes=data.duration_minutes,
         notes=data.notes,
         status=AppointmentStatus.BOOKED,
     )
-    db.add(appt)
-    await db.flush()
-    await db.refresh(appt)
+    await appt.insert()
 
     # Issue short-lived QR JWT (15 min)
     qr_payload = {
-        "appointment_id": appt.id,
+        "appointment_id": str(appt.id),
         "employee_id": patient.employee_id,
         "exp": datetime.now(timezone.utc) + timedelta(minutes=15),
     }
     token = jwt.encode(qr_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     appt.qr_token = token
     appt.qr_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
-    db.add(appt)
+    await appt.save()
     return appt
 
 
 @router.patch("/appointments/{appt_id}", response_model=AppointmentRead,
               summary="Reschedule appointment")
 async def reschedule(
-    appt_id: int,
+    appt_id: str,
     scheduled_at: datetime,
-    db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Appointment).where(Appointment.id == appt_id))
-    appt = result.scalar_one_or_none()
+    oid = PydanticObjectId(appt_id) if isinstance(appt_id, str) else appt_id
+    appt = await Appointment.get(oid)
     if appt:
         appt.scheduled_at = scheduled_at
-        db.add(appt)
+        await appt.save()
     return appt
 
 
 @router.delete("/appointments/{appt_id}", status_code=204,
                summary="Cancel appointment")
 async def cancel(
-    appt_id: int,
-    db: AsyncSession = Depends(get_db),
+    appt_id: str,
     _: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Appointment).where(Appointment.id == appt_id))
-    appt = result.scalar_one_or_none()
+    oid = PydanticObjectId(appt_id) if isinstance(appt_id, str) else appt_id
+    appt = await Appointment.get(oid)
     if appt:
         appt.status = AppointmentStatus.CANCELLED
-        db.add(appt)
+        await appt.save()
     return None
 
 
@@ -211,7 +231,6 @@ async def cancel(
              summary="Kiosk QR check-in")
 async def checkin(
     data: CheckInRequest,
-    db: AsyncSession = Depends(get_db),
 ):
     from fastapi import HTTPException, status as http_status
     try:
@@ -220,26 +239,25 @@ async def checkin(
     except Exception:
         raise HTTPException(http_status.HTTP_400_BAD_REQUEST, "Invalid or expired QR token")
 
-    result = await db.execute(select(Appointment).where(Appointment.id == appt_id))
-    appt = result.scalar_one_or_none()
+    oid = PydanticObjectId(appt_id) if isinstance(appt_id, str) else appt_id
+    appt = await Appointment.get(oid)
     if not appt:
         raise HTTPException(http_status.HTTP_404_NOT_FOUND, "Appointment not found")
 
     appt.status = AppointmentStatus.CHECKED_IN
     appt.checked_in_at = datetime.now(timezone.utc)
-    db.add(appt)
+    await appt.save()
 
-    patient_result = await db.execute(select(Patient).where(Patient.id == appt.patient_id))
-    patient = patient_result.scalar_one_or_none()
+    patient = await Patient.get(appt.patient_id)
     patient_name = patient.full_name if patient else "Unknown"
 
     # Push live event to doctor's WebSocket stream
     await manager.broadcast_to_role("doctor", {
         "type": "checkin",
         "data": {
-            "appointment_id": appt_id,
+            "appointment_id": str(appt_id),
             "patient_name": patient_name,
-            "checked_in_at": appt.checked_in_at.isoformat(),
+            "checked_in_at": appt.checked_in_at.isoformat() if hasattr(appt.checked_in_at, 'isoformat') else str(appt.checked_in_at),
         }
     })
 
@@ -248,7 +266,7 @@ async def checkin(
         room="Medical Room 1",
         doctor_name="Dr. Withana",
         patient_name=patient_name,
-        appointment_id=appt_id,
+        appointment_id=str(appt_id),
     )
 
 

@@ -1,4 +1,5 @@
 """MRAS — Prescription & Drug Pydantic schemas"""
+from beanie import PydanticObjectId
 from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel
@@ -6,7 +7,7 @@ from src.models import ConsultationStatus
 
 
 class DrugRead(BaseModel):
-    id: int
+    id: PydanticObjectId
     name: str
     generic_name: str
     atc_code: Optional[str] = None
@@ -19,7 +20,7 @@ class DrugRead(BaseModel):
 
 
 class PrescriptionLineCreate(BaseModel):
-    drug_id: int
+    drug_id: PydanticObjectId
     dose: str
     frequency: str
     duration_days: int
@@ -27,25 +28,25 @@ class PrescriptionLineCreate(BaseModel):
 
 
 class PrescriptionLineRead(PrescriptionLineCreate):
-    id: int
-    prescription_id: int
+    id: PydanticObjectId
+    prescription_id: PydanticObjectId
     quantity_dispensed: Optional[int] = None
 
     model_config = {"from_attributes": True}
 
 
 class PrescriptionCreate(BaseModel):
-    consultation_id: int
-    patient_id: int
+    consultation_id: PydanticObjectId
+    patient_id: PydanticObjectId
     lines: List[PrescriptionLineCreate]
     notes: Optional[str] = None
 
 
 class PrescriptionRead(BaseModel):
-    id: int
-    consultation_id: int
-    patient_id: int
-    doctor_id: int
+    id: PydanticObjectId
+    consultation_id: PydanticObjectId
+    patient_id: PydanticObjectId
+    doctor_id: PydanticObjectId
     status: ConsultationStatus
     interaction_severity: Optional[str] = None
     notes: Optional[str] = None
@@ -79,7 +80,7 @@ class InteractionCheckResult(BaseModel):
 
 
 class DispenseResult(BaseModel):
-    prescription_id: int
+    prescription_id: PydanticObjectId
     status: str
     dispensed_at: datetime
     message: str

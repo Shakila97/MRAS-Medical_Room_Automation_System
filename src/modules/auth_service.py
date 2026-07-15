@@ -1,11 +1,10 @@
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Any
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from beanie import PydanticObjectId
 
 from src.core.database import get_db
 from src.core.security import (
@@ -23,25 +22,27 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
 # ── User Queries ─────────────────────────────────────────────────────────────
-async def get_user_by_email(email: str, db: AsyncSession) -> Optional[User]:
-    result = await db.execute(select(User).where(User.email == email))
-    return result.scalar_one_or_none()
+async def get_user_by_email(email: str, db: Any = None) -> Optional[User]:
+    return await User.find_one(User.email == email)
 
 
-async def get_user_by_id(user_id: int, db: AsyncSession) -> Optional[User]:
-    result = await db.execute(select(User).where(User.id == user_id))
-    return result.scalar_one_or_none()
+async def get_user_by_id(user_id: str | PydanticObjectId, db: Any = None) -> Optional[User]:
+    try:
+        oid = PydanticObjectId(user_id) if isinstance(user_id, str) else user_id
+        return await User.get(oid)
+    except Exception:
+        return None
 
 
 # ── Auth Operations ───────────────────────────────────────────────────────────
-async def register_user(data: UserRegister, db: AsyncSession) -> User:
+async def register_user(data: UserRegister, db: Any = None) -> User:
     """
     Register a new user.
 
     Raises:
         HTTPException 400: If email is already taken.
     """
-    existing = await get_user_by_email(data.email, db)
+    existing = await get_user_by_email(data.email)
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -55,20 +56,18 @@ async def register_user(data: UserRegister, db: AsyncSession) -> User:
         hashed_password=hash_password(data.password),
         role=data.role,
     )
-    db.add(user)
-    await db.flush()   # Get the generated ID without committing yet
-    await db.refresh(user)
+    await user.insert()
     return user
 
 
-async def login_user(email: str, password: str, db: AsyncSession) -> TokenResponse:
+async def login_user(email: str, password: str, db: Any = None) -> TokenResponse:
     """
     Authenticate user and return access + refresh tokens.
 
     Raises:
         HTTPException 401: If credentials are invalid or account is inactive.
     """
-    user = await get_user_by_email(email, db)
+    user = await get_user_by_email(email)
 
     # Use the same generic error for both wrong email and wrong password
     # to prevent user enumeration attacks
@@ -87,7 +86,7 @@ async def login_user(email: str, password: str, db: AsyncSession) -> TokenRespon
 
     # Update last login timestamp
     user.last_login = datetime.now(timezone.utc)
-    db.add(user)
+    await user.save()
 
     token_payload = {"sub": str(user.id), "role": user.role, "email": user.email}
 
@@ -99,7 +98,7 @@ async def login_user(email: str, password: str, db: AsyncSession) -> TokenRespon
     )
 
 
-async def refresh_access_token(refresh_token: str, db: AsyncSession) -> TokenResponse:
+async def refresh_access_token(refresh_token: str, db: Any = None) -> TokenResponse:
     """
     Issue a new access token from a valid refresh token.
 
@@ -116,11 +115,11 @@ async def refresh_access_token(refresh_token: str, db: AsyncSession) -> TokenRes
         payload = decode_token(refresh_token)
         if payload.get("type") != "refresh":
             raise credentials_error
-        user_id = int(payload["sub"])
+        user_id = payload["sub"]
     except (JWTError, KeyError, ValueError):
         raise credentials_error
 
-    user = await get_user_by_id(user_id, db)
+    user = await get_user_by_id(user_id)
     if not user or not user.is_active:
         raise credentials_error
 
@@ -135,7 +134,7 @@ async def refresh_access_token(refresh_token: str, db: AsyncSession) -> TokenRes
 
 
 async def change_password(
-    user: User, current_password: str, new_password: str, db: AsyncSession
+    user: User, current_password: str, new_password: str, db: Any = None
 ) -> None:
     """
     Change a user's password after verifying the current one.
@@ -150,13 +149,13 @@ async def change_password(
         )
     user.hashed_password = hash_password(new_password)
     user.updated_at = datetime.now(timezone.utc)
-    db.add(user)
+    await user.save()
 
 
 # ── Auth Dependencies ─────────────────────────────────────────────────────────
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db),
+    db: Any = Depends(get_db),
 ) -> User:
     """
     FastAPI dependency — extracts and validates JWT, returns the current user.
@@ -175,11 +174,11 @@ async def get_current_user(
         payload = decode_token(token)
         if payload.get("type") != "access":
             raise credentials_error
-        user_id = int(payload["sub"])
+        user_id = payload["sub"]
     except (JWTError, KeyError, ValueError):
         raise credentials_error
 
-    user = await get_user_by_id(user_id, db)
+    user = await get_user_by_id(user_id)
     if not user or not user.is_active:
         raise credentials_error
 

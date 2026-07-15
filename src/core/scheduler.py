@@ -6,12 +6,10 @@ import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from src.core.database import AsyncSessionLocal
 from src.modules.health_forecaster import HealthForecaster
 from src.modules.jrissi_scorer import JRISSIScorer
 from src.modules.inventory_service import get_expiring
 from src.models import Notification, NotificationKind, NotificationTone
-from sqlmodel import select
 from src.models import Patient
 
 logger = logging.getLogger(__name__)
@@ -22,46 +20,39 @@ scheduler = AsyncIOScheduler(timezone="Asia/Colombo")
 async def refresh_forecasts_job():
     """Daily at 02:00: Refresh 14-day forecasts from Open-Meteo."""
     logger.info("Running job: refresh_forecasts")
-    async with AsyncSessionLocal() as session:
-        forecaster = HealthForecaster(session)
-        await forecaster.refresh_all()
-        await session.commit()
+    forecaster = HealthForecaster()
+    await forecaster.refresh_all()
     logger.info("Finished job: refresh_forecasts")
 
 
 async def compute_jrissi_batch_job():
     """Daily at 06:00: Recompute JRISSI for all active patients."""
     logger.info("Running job: compute_jrissi_batch")
-    async with AsyncSessionLocal() as session:
-        scorer = JRISSIScorer(session)
-        result = await session.execute(select(Patient).where(Patient.is_active == True))
-        patients = result.scalars().all()
-        for patient in patients:
-            await scorer.compute(patient.id)
-        await session.commit()
+    scorer = JRISSIScorer()
+    patients = await Patient.find(Patient.is_active == True).to_list()
+    for patient in patients:
+        await scorer.compute(patient.id)
     logger.info("Finished job: compute_jrissi_batch")
 
 
 async def expiry_alerts_job():
     """Daily at 07:00: Notify pharmacy of items expiring within 30 days."""
     logger.info("Running job: expiry_alerts")
-    async with AsyncSessionLocal() as session:
-        expiring_lots = await get_expiring(session, days=30)
-        if expiring_lots:
-            # Group by drug
-            count = len(set(lot.drug_name for lot in expiring_lots))
-            
-            notif = Notification(
-                kind=NotificationKind.STOCK_LOW,
-                tone=NotificationTone.WARNING,
-                title="Expiry Watch Alert",
-                body=f"There are {len(expiring_lots)} lots across {count} drugs expiring within the next 30 days. Please review FEFO queue.",
-                target_role='["pharmacy", "admin"]',
-                cta_label="View Inventory",
-                cta_url="/pharmacy/inventory?filter=expiring",
-            )
-            session.add(notif)
-            await session.commit()
+    expiring_lots = await get_expiring(days=30)
+    if expiring_lots:
+        # Group by drug
+        count = len(set(lot.drug_name for lot in expiring_lots))
+        
+        notif = Notification(
+            kind=NotificationKind.STOCK_LOW,
+            tone=NotificationTone.WARNING,
+            title="Expiry Watch Alert",
+            body=f"There are {len(expiring_lots)} lots across {count} drugs expiring within the next 30 days. Please review FEFO queue.",
+            target_role='["pharmacy", "admin"]',
+            cta_label="View Inventory",
+            cta_url="/pharmacy/inventory?filter=expiring",
+        )
+        await notif.insert()
     logger.info("Finished job: expiry_alerts")
 
 

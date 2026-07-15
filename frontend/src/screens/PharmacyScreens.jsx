@@ -1,9 +1,14 @@
-﻿/* eslint-disable */
+/* eslint-disable */
 import React from 'react';
+import { api } from '../api/client';
 import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
 import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
 export function GrnReceive() {
-  const [step, setStep] = React.useState(2); // currently at "Lot details"
+  const [step, setStep] = React.useState(2);
+  const [grnId, setGrnId] = React.useState(null);
+  const [posting, setPosting] = React.useState(false);
+  const [posted, setPosted] = React.useState(false);
+  const [toast, setToast] = React.useState(null);
   const lots = [
     { id: 'LOT-A8821', drug: 'Cetirizine 10 mg', mfg: 'Hemas', qty: 200, expiry: '2027-09', dispOrder: 1, dispLabel: 'Dispense first', tone: 'warning' },
     { id: 'LOT-A8822', drug: 'Cetirizine 10 mg', mfg: 'Hemas', qty: 300, expiry: '2028-03', dispOrder: 2, dispLabel: 'After A8821', tone: 'neutral' },
@@ -22,7 +27,36 @@ export function GrnReceive() {
         <div style={{ display: 'flex', gap: 8 }}>
           <Button kind="ghost" icon="print">Print GRN</Button>
           <Button kind="secondary" icon="save">Save draft</Button>
-          <Button kind="primary" icon="check">Post to inventory</Button>
+          <Button kind="primary" icon="check" disabled={posting || posted} onClick={async () => {
+            if (!grnId) {
+              // Create GRN first then post it
+              setPosting(true);
+              try {
+                const grn = await api.post('/grn', { supplier: 'Hemas Pharmaceuticals', po_ref: 'PO-2026-0331', notes: 'Received at loading bay' });
+                const id = grn.data.id;
+                setGrnId(id);
+                await api.post(`/grn/${id}/post`);
+                setPosted(true);
+                setToast({ tone: 'success', title: 'GRN posted to inventory successfully!' });
+                setStep(4);
+              } catch (e) {
+                console.error(e);
+                setToast({ tone: 'danger', title: 'Failed to post GRN. Please try again.' });
+              } finally { setPosting(false); }
+            } else {
+              setPosting(true);
+              try {
+                await api.post(`/grn/${grnId}/post`);
+                setPosted(true);
+                setToast({ tone: 'success', title: 'GRN posted to inventory successfully!' });
+                setStep(4);
+              } catch (e) {
+                setToast({ tone: 'danger', title: 'Failed to post GRN.' });
+              } finally { setPosting(false); }
+            }
+          }}>
+            {posting ? 'Posting…' : posted ? 'Posted ✓' : 'Post to inventory'}
+          </Button>
         </div>
       </header>
 
@@ -106,6 +140,11 @@ export function GrnReceive() {
           <EmptyState icon="check_circle" title="No discrepancies." description="Counts match PO. All lots within expected expiry window." />
         </Card>
       </div>
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 100 }}>
+          <Toast tone={toast.tone} title={toast.title} onClose={() => setToast(null)} />
+        </div>
+      )}
     </div>
   );
 }

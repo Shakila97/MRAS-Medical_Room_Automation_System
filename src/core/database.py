@@ -1,56 +1,41 @@
-from typing import AsyncGenerator
-
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlmodel import SQLModel
+from motor.motor_asyncio import AsyncIOMotorClient
+from beanie import init_beanie
 
 from src.core.config import settings
 
-# ── Engine ────────────────────────────────────────────────────────────────────
-# SQLite (dev) needs connect_args; PostgreSQL does not
-_is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+async def init_db() -> None:
+    """Initialize Beanie ODM with Motor client."""
+    client = AsyncIOMotorClient(settings.DATABASE_URL)
+    
+    # Extract DB name from the URL, defaulting to 'mras_db'
+    db_name = client.get_database().name or "mras_db"
+    
+    from src.models.user import User
+    from src.models.patient import Patient
+    from src.models import (
+        Vital, Consultation, Drug, Prescription, PrescriptionLine,
+        InventoryItem, GRN, GRNLot, JRISSIRecord, Appointment,
+        Notification, ForecastSignal, AuditLog
+    )
+    
+    await init_beanie(
+        database=client[db_name],
+        document_models=[
+            User, Patient, Vital, Consultation, Drug, Prescription,
+            PrescriptionLine, InventoryItem, GRN, GRNLot,
+            JRISSIRecord, Appointment, Notification,
+            ForecastSignal, AuditLog
+        ]
+    )
 
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=settings.APP_ENV == "development",
-    connect_args={"check_same_thread": False} if _is_sqlite else {},
-    # Connection pool settings (ignored by SQLite)
-    **({} if _is_sqlite else {
-        "pool_size": 10,
-        "max_overflow": 20,
-        "pool_pre_ping": True,
-    }),
-)
-
-AsyncSessionLocal = async_sessionmaker(
-    bind=engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
-
-
-# ── Dependency ────────────────────────────────────────────────────────────────
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
+async def get_db():
     """
-    FastAPI dependency — yields an async DB session per request.
-    Session is automatically closed after the request completes.
-
-    Usage:
-        async def my_endpoint(db: AsyncSession = Depends(get_db)):
-            ...
+    Dummy dependency for FastAPI routes.
+    Beanie manages the database connection globally, so we no longer need to yield a session.
+    However, this is kept so that routes relying on `db = Depends(get_db)` don't immediately crash.
     """
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
+    yield None
 
-
-# ── Table creation (dev only — use Alembic in production) ────────────────────
 async def create_db_tables() -> None:
-    """Create all tables defined in SQLModel models. Dev/test use only."""
-    # Import all models so SQLModel.metadata knows about them
-    import src.models  # noqa: F401
-    async with engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.create_all)
+    """Mock for backwards compatibility. MongoDB is schemaless, handled by init_beanie."""
+    pass

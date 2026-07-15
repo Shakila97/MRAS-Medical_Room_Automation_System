@@ -1,12 +1,13 @@
 """MRAS — Inventory & GRN Pydantic schemas"""
+from beanie import PydanticObjectId
 from datetime import datetime, date
 from typing import Optional, List
 from pydantic import BaseModel
 
 
 class InventoryItemRead(BaseModel):
-    id: int
-    drug_id: int
+    id: PydanticObjectId
+    drug_id: PydanticObjectId
     drug_name: str
     total_quantity: int
     reorder_level: int
@@ -19,7 +20,7 @@ class InventoryItemRead(BaseModel):
 
 
 class ExpiryEntry(BaseModel):
-    lot_id: int
+    lot_id: PydanticObjectId
     drug_name: str
     lot_no: str
     quantity: int
@@ -31,7 +32,7 @@ class ExpiryEntry(BaseModel):
 
 
 class GRNLotCreate(BaseModel):
-    drug_id: int
+    drug_id: PydanticObjectId
     drug_name: str
     lot_no: str
     manufacturer: Optional[str] = None
@@ -40,8 +41,8 @@ class GRNLotCreate(BaseModel):
 
 
 class GRNLotRead(GRNLotCreate):
-    id: int
-    grn_id: int
+    id: PydanticObjectId
+    grn_id: PydanticObjectId
     fefo_rank: int
     remaining_qty: int
 
@@ -56,7 +57,7 @@ class GRNCreate(BaseModel):
 
 
 class GRNRead(BaseModel):
-    id: int
+    id: PydanticObjectId
     po_number: Optional[str] = None
     supplier: Optional[str] = None
     status: str
@@ -69,7 +70,7 @@ class GRNRead(BaseModel):
 
 
 class QueuedRx(BaseModel):
-    prescription_id: int
+    prescription_id: PydanticObjectId
     patient_name: str
     doctor_name: str
     drug_count: int
@@ -78,7 +79,7 @@ class QueuedRx(BaseModel):
 
 
 class DispenseResult(BaseModel):
-    prescription_id: int
+    prescription_id: PydanticObjectId
     status: str
     dispensed_at: datetime
     message: str

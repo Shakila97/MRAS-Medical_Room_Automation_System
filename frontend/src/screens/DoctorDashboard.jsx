@@ -1,11 +1,24 @@
 /* eslint-disable */
 import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
 import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
+
+// Live date string
+const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+// Greeting by time of day
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
 export function DoctorDashboard({ onOpenPatient }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const doctorName = user?.full_name || 'Doctor';
 
   useEffect(() => {
     api.get('/dashboard/doctor')
@@ -27,8 +40,8 @@ export function DoctorDashboard({ onOpenPatient }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16 }}>
         <div>
-          <div className="type-eyebrow" style={{ marginBottom: 6 }}>Thursday · 14 May 2026</div>
-          <h1 className="type-h1">Good morning, Dr. Withana.</h1>
+          <div className="type-eyebrow" style={{ marginBottom: 6 }}>{todayLabel}</div>
+          <h1 className="type-h1">{greeting()}, {doctorName}.</h1>
           <p className="type-body" style={{ marginTop: 6 }}>3 employees flagged overnight. 1 escalation pending review.</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>

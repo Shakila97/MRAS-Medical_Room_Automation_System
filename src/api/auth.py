@@ -1,7 +1,5 @@
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.database import get_db
 from src.models.user import User, UserRole
 from src.modules.auth_service import (
     change_password,
@@ -33,7 +31,6 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 )
 async def register(
     data: UserRegister,
-    db: AsyncSession = Depends(get_db),
 ):
     """
     Create a new user account.
@@ -42,7 +39,7 @@ async def register(
     - Password must be at least 8 characters and contain a number
     - Role defaults to `employee` if not specified
     """
-    user = await register_user(data, db)
+    user = await register_user(data)
     return UserRead.model_validate(user)
 
 
@@ -54,7 +51,6 @@ async def register(
 )
 async def login(
     data: UserLogin,
-    db: AsyncSession = Depends(get_db),
 ):
     """
     Authenticate with email and password.
@@ -63,7 +59,7 @@ async def login(
     - `access_token`: Short-lived JWT (30 min) — send in `Authorization: Bearer <token>`
     - `refresh_token`: Long-lived JWT (7 days) — use to get a new access token
     """
-    return await login_user(data.email, data.password, db)
+    return await login_user(data.email, data.password)
 
 
 # ── POST /api/auth/refresh ────────────────────────────────────────────────────
@@ -74,10 +70,9 @@ async def login(
 )
 async def refresh(
     data: TokenRefresh,
-    db: AsyncSession = Depends(get_db),
 ):
     """Issue a new access token without requiring the user to log in again."""
-    return await refresh_access_token(data.refresh_token, db)
+    return await refresh_access_token(data.refresh_token)
 
 
 # ── GET /api/auth/me ──────────────────────────────────────────────────────────
@@ -100,10 +95,9 @@ async def get_me(current_user: User = Depends(get_current_user)):
 async def change_pwd(
     data: PasswordChange,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
 ):
     """Change the currently logged-in user's password."""
-    await change_password(current_user, data.current_password, data.new_password, db)
+    await change_password(current_user, data.current_password, data.new_password)
     return MessageResponse(message="Password changed successfully")
 
 

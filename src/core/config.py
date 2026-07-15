@@ -9,9 +9,8 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:5173"
 
     # ── Database ─────────────────────────────────────────────────
-    # Dev default: SQLite (no external DB needed)
-    # Prod: set DATABASE_URL=postgresql+asyncpg://user:pass@host/mras_db
-    DATABASE_URL: str = "sqlite+aiosqlite:///./mras.db"
+    # MongoDB Cluster URL
+    DATABASE_URL: str = "mongodb+srv://shakilasandun_db_user:cVM8MP5Q4KU0YlAA@cluster0.t2hlvzs.mongodb.net/mras_db?appName=Cluster0"
 
     # ── Security ─────────────────────────────────────────────────
     SECRET_KEY: str = "dev-secret-key-change-in-production"

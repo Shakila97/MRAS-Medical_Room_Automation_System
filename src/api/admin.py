@@ -3,23 +3,57 @@ MRAS v3.0 — Admin Router
 User management, audit log, aggregate reports.
 """
 from typing import List, Optional
+import re
 
 from fastapi import APIRouter, Depends, Query, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select, func
+from beanie import PydanticObjectId
 
-from src.core.database import get_db
 from src.models.user import User, UserRole
 from src.models import AuditLog, Patient, Consultation, Prescription
 from src.modules.auth_service import require_role, get_user_by_id
 from src.modules.auth_service import hash_password
-from src.core.security import hash_password
-from src.schemas.admin import UserSummary, UserInvite, UserUpdate, AuditEntryRead, ReportSummary
+from src.schemas.admin import UserSummary, UserInvite, UserUpdate, AuditEntryRead, ReportSummary, UserStats
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────
+
+@router.get("/users/stats", response_model=UserStats, summary="Get user role statistics")
+async def get_user_stats(
+    _: User = Depends(require_role(UserRole.ADMIN)),
+):
+    users = await User.find(projection_model=User).to_list()
+    
+    stats = {
+        "doctor": {"active": 0, "suspended": 0},
+        "pharmacy": {"active": 0, "suspended": 0},
+        "employee": {"active": 0, "suspended": 0},
+        "admin": {"active": 0, "suspended": 0},
+    }
+    
+    for u in users:
+        r = u.role.value if hasattr(u.role, 'value') else u.role
+        if r in stats:
+            if u.is_active:
+                stats[r]["active"] += 1
+            else:
+                stats[r]["suspended"] += 1
+                
+    def make_stat(role, active_suffix, suspended_suffix="suspended"):
+        total = stats[role]["active"] + stats[role]["suspended"]
+        if stats[role]["suspended"] > 0:
+            sub = f"{stats[role]['suspended']} {suspended_suffix}"
+        else:
+            sub = active_suffix
+        return {"total": total, "subtitle": sub}
+        
+    return {
+        "doctors": make_stat("doctor", "All active", "pending"),
+        "pharmacy": make_stat("pharmacy", "All active"),
+        "employees": make_stat("employee", "All active"),
+        "admins": {"total": stats["admin"]["active"] + stats["admin"]["suspended"], "subtitle": "SSO active"}
+    }
 
 @router.get("/users", response_model=List[UserSummary], summary="List all users")
 async def list_users(
@@ -28,33 +62,32 @@ async def list_users(
     active_only: bool = Query(default=True),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=100),
-    db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.ADMIN)),
 ):
-    stmt = select(User)
+    query = User.find()
     if q:
-        stmt = stmt.where(
-            User.full_name.ilike(f"%{q}%") | User.email.ilike(f"%{q}%")
-        )
+        regex = re.compile(q, re.IGNORECASE)
+        query = query.find({"$or": [{"full_name": regex}, {"email": regex}]})
     if role:
-        stmt = stmt.where(User.role == role)
+        query = query.find(User.role == role)
     if active_only:
-        stmt = stmt.where(User.is_active == True)
-    result = await db.execute(stmt.offset(skip).limit(limit))
-    return result.scalars().all()
+        query = query.find(User.is_active == True)
+        
+    users = await query.skip(skip).limit(limit).to_list()
+    return users
 
 
 @router.post("/users", response_model=UserSummary, status_code=201,
              summary="Invite (create) a new user")
 async def invite_user(
     data: UserInvite,
-    db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.ADMIN)),
 ):
     # Check uniqueness
-    result = await db.execute(select(User).where(User.email == data.email))
-    if result.scalar_one_or_none():
+    existing = await User.find_one(User.email == data.email)
+    if existing:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Email already in use")
+        
     user = User(
         email=data.email,
         full_name=data.full_name,
@@ -63,46 +96,43 @@ async def invite_user(
         hashed_password=hash_password("ChangeMe@123"),  # Temporary — user must change
         is_active=True,
     )
-    db.add(user)
-    await db.flush()
-    await db.refresh(user)
+    await user.insert()
     return user
 
 
 @router.patch("/users/{user_id}", response_model=UserSummary, summary="Update user")
 async def update_user(
-    user_id: int,
+    user_id: str,
     data: UserUpdate,
-    db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.ADMIN)),
 ):
-    user = await get_user_by_id(user_id, db)
+    user = await get_user_by_id(user_id)
     if not user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(user, field, value)
-    db.add(user)
+    await user.save()
     return user
 
 
 @router.post("/users/{user_id}/suspend", response_model=UserSummary,
              summary="Suspend a user account")
 async def suspend_user(
-    user_id: int,
-    db: AsyncSession = Depends(get_db),
+    user_id: str,
     admin: User = Depends(require_role(UserRole.ADMIN)),
 ):
-    user = await get_user_by_id(user_id, db)
+    user = await get_user_by_id(user_id)
     if not user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
-    if user.id == admin.id:
+    if str(user.id) == str(admin.id):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cannot suspend your own account")
     user.is_active = False
-    db.add(user)
-    db.add(AuditLog(
+    await user.save()
+    
+    await AuditLog(
         actor_id=admin.id, actor_label=admin.email,
         action="user.suspend", target=f"user:{user_id}", level="warn",
-    ))
+    ).insert()
     return user
 
 
@@ -115,43 +145,33 @@ async def audit_log(
     level: Optional[str] = Query(default=None),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=500),
-    db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.ADMIN)),
 ):
-    stmt = select(AuditLog).order_by(AuditLog.created_at.desc())
+    query = AuditLog.find()
     if actor:
-        stmt = stmt.where(AuditLog.actor_label.ilike(f"%{actor}%"))
+        query = query.find({"actor_label": re.compile(actor, re.IGNORECASE)})
     if action:
-        stmt = stmt.where(AuditLog.action.ilike(f"%{action}%"))
+        query = query.find({"action": re.compile(action, re.IGNORECASE)})
     if level:
-        stmt = stmt.where(AuditLog.level == level)
-    result = await db.execute(stmt.offset(skip).limit(limit))
-    return result.scalars().all()
+        query = query.find(AuditLog.level == level)
+        
+    return await query.sort(-AuditLog.created_at).skip(skip).limit(limit).to_list()
 
 
 # ── Reports ───────────────────────────────────────────────────────────────────
 
 @router.get("/reports/summary", response_model=ReportSummary, summary="Aggregate summary report")
 async def summary_report(
-    db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.ADMIN)),
 ):
-    patient_count = (await db.execute(
-        select(func.count(Patient.id)).where(Patient.is_active == True)
-    )).scalar_one()
-    consult_count = (await db.execute(select(func.count(Consultation.id)))).scalar_one()
-    rx_count = (await db.execute(select(func.count(Prescription.id)))).scalar_one()
+    patient_count = await Patient.find(Patient.is_active == True).count()
+    consult_count = await Consultation.find().count()
+    rx_count = await Prescription.find().count()
 
     from src.models import JRISSIRecord, RiskBand
-    low = (await db.execute(
-        select(func.count(JRISSIRecord.id)).where(JRISSIRecord.risk_band == RiskBand.LOW)
-    )).scalar_one()
-    moderate = (await db.execute(
-        select(func.count(JRISSIRecord.id)).where(JRISSIRecord.risk_band == RiskBand.MODERATE)
-    )).scalar_one()
-    high = (await db.execute(
-        select(func.count(JRISSIRecord.id)).where(JRISSIRecord.risk_band == RiskBand.HIGH)
-    )).scalar_one()
+    low = await JRISSIRecord.find(JRISSIRecord.risk_band == RiskBand.LOW).count()
+    moderate = await JRISSIRecord.find(JRISSIRecord.risk_band == RiskBand.MODERATE).count()
+    high = await JRISSIRecord.find(JRISSIRecord.risk_band == RiskBand.HIGH).count()
 
     return ReportSummary(
         total_patients=patient_count,

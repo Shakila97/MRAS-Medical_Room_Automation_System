@@ -1,3 +1,4 @@
+from beanie import PydanticObjectId
 from datetime import datetime
 from typing import Optional
 
@@ -61,7 +62,7 @@ class PasswordChange(BaseModel):
 # ── Response Schemas ─────────────────────────────────────────────────────────
 class UserRead(BaseModel):
     """Safe user response — never includes hashed_password."""
-    id: int
+    id: PydanticObjectId
     email: str
     full_name: str
     employee_id: Optional[str]

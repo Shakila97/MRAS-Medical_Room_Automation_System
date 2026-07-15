@@ -2,7 +2,9 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from sqlmodel import Field, SQLModel
+from beanie import Document, Indexed
+from pydantic import Field, EmailStr
+from pymongo import IndexModel, ASCENDING
 
 
 # ── Role Enum ────────────────────────────────────────────────────────────────
@@ -21,20 +23,16 @@ class UserRole(str, Enum):
 
 
 # ── User Table ───────────────────────────────────────────────────────────────
-class User(SQLModel, table=True):
+class User(Document):
     """
     Core user record. Stores credentials and role assignment.
     Linked to Employee profile (patient_id) for clinical data access.
     """
-    __tablename__ = "users"
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-
     # Identity
-    email: str = Field(unique=True, index=True, max_length=255)
+    email: Indexed(EmailStr, unique=True)
     full_name: str = Field(max_length=255)
-    employee_id: Optional[str] = Field(
-        default=None, unique=True, index=True, max_length=20,
+    employee_id: Optional[Indexed(str, unique=True)] = Field(
+        default=None, max_length=20,
         description="e.g. SIS/24/B2/36 — links to the Patient record"
     )
 
@@ -58,3 +56,6 @@ class User(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     last_login: Optional[datetime] = Field(default=None)
+
+    class Settings:
+        name = "users"

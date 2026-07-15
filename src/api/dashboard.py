@@ -4,48 +4,47 @@ Provides aggregate metrics for Admin, Doctor, and Pharmacy dashboards.
 """
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import func, select, desc
 from datetime import datetime, timedelta
 
-from src.core.database import get_db
 from src.models import (
     User, UserRole, Patient, InventoryItem, GRNLot, AuditLog, 
-    JRISSIRecord, Appointment, RiskBand
+    JRISSIRecord, Appointment, RiskBand, AppointmentStatus
 )
 from src.modules.auth_service import require_role
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 @router.get("/admin")
-async def get_admin_dashboard(db: AsyncSession = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN]))):
+async def get_admin_dashboard(current_user: User = Depends(require_role(UserRole.ADMIN))):
     # Dummy service metrics
     services = [
         { "name": "FastAPI backend", "state": "up", "meta": "v3.0.4 · ECS" },
-        { "name": "PostgreSQL · Timescale", "state": "up", "meta": "p95 42 ms" },
+        { "name": "MongoDB · Beanie", "state": "up", "meta": "p95 12 ms" },
         { "name": "Claude API", "state": "up", "meta": "sonnet-4-6" },
         { "name": "OpenWeatherMap", "state": "degraded", "meta": "1 retry/h" },
         { "name": "Twilio WhatsApp", "state": "up", "meta": "99.99%" },
     ]
 
     # Role distribution
-    roles = await db.execute(select(User.role, func.count(User.id)).group_by(User.role))
-    role_counts = {role: count for role, count in roles.all()}
+    roles_agg = await User.aggregate([
+        {"$group": {"_id": "$role", "count": {"$sum": 1}}}
+    ]).to_list()
+    role_counts = {r["_id"]: r["count"] for r in roles_agg}
+    
     total_users = sum(role_counts.values()) or 1
     role_distribution = [
-        { "name": "Employee", "count": role_counts.get(UserRole.EMPLOYEE, 0), "pct": round(role_counts.get(UserRole.EMPLOYEE, 0) / total_users * 100, 1), "color": "var(--role-employee)" },
-        { "name": "Doctor", "count": role_counts.get(UserRole.DOCTOR, 0), "pct": round(role_counts.get(UserRole.DOCTOR, 0) / total_users * 100, 1), "color": "var(--role-doctor)" },
-        { "name": "Pharmacy", "count": role_counts.get(UserRole.PHARMACY, 0), "pct": round(role_counts.get(UserRole.PHARMACY, 0) / total_users * 100, 1), "color": "var(--role-pharmacy)" },
-        { "name": "Admin", "count": role_counts.get(UserRole.ADMIN, 0), "pct": round(role_counts.get(UserRole.ADMIN, 0) / total_users * 100, 1), "color": "var(--role-admin)" },
+        { "name": "Employee", "count": role_counts.get(UserRole.EMPLOYEE.value, 0), "pct": round(role_counts.get(UserRole.EMPLOYEE.value, 0) / total_users * 100, 1), "color": "var(--role-employee)" },
+        { "name": "Doctor", "count": role_counts.get(UserRole.DOCTOR.value, 0), "pct": round(role_counts.get(UserRole.DOCTOR.value, 0) / total_users * 100, 1), "color": "var(--role-doctor)" },
+        { "name": "Pharmacy", "count": role_counts.get(UserRole.PHARMACY.value, 0), "pct": round(role_counts.get(UserRole.PHARMACY.value, 0) / total_users * 100, 1), "color": "var(--role-pharmacy)" },
+        { "name": "Admin", "count": role_counts.get(UserRole.ADMIN.value, 0), "pct": round(role_counts.get(UserRole.ADMIN.value, 0) / total_users * 100, 1), "color": "var(--role-admin)" },
     ]
 
     # Recent users
-    recent_users_q = await db.execute(select(User).order_by(desc(User.created_at)).limit(6))
+    recent_users = await User.find().sort(-User.created_at).limit(6).to_list()
     users_data = []
-    for u in recent_users_q.scalars().all():
+    for u in recent_users:
         accent = f"var(--role-{u.role.value.lower()})"
         
-        # Check if user has department attribute, else mock
         dept = getattr(u, 'department', None)
         if dept:
             dept_str = dept.value.capitalize()
@@ -53,7 +52,7 @@ async def get_admin_dashboard(db: AsyncSession = Depends(get_db), current_user: 
             dept_str = "Administration"
 
         users_data.append({
-            "name": f"{u.first_name} {u.last_name}",
+            "name": f"{u.full_name}",
             "role": u.role.value.capitalize(),
             "dept": dept_str,
             "status": "active" if u.is_active else "invited",
@@ -62,9 +61,9 @@ async def get_admin_dashboard(db: AsyncSession = Depends(get_db), current_user: 
         })
 
     # Recent audit
-    audit_q = await db.execute(select(AuditLog).order_by(desc(AuditLog.created_at)).limit(8))
+    recent_audit = await AuditLog.find().sort(-AuditLog.created_at).limit(8).to_list()
     audit_data = []
-    for a in audit_q.scalars().all():
+    for a in recent_audit:
         tone = "info"
         icon = "info"
         if a.level == "warn":
@@ -84,14 +83,13 @@ async def get_admin_dashboard(db: AsyncSession = Depends(get_db), current_user: 
 
     # Stats
     active_users = sum(count for count in role_counts.values())
-    security_events_q = await db.execute(select(func.count(AuditLog.id)).where(AuditLog.level.in_(["warn", "error"])))
-    security_events_count = security_events_q.scalar() or 0
+    security_events_count = await AuditLog.find({"level": {"$in": ["warn", "error"]}}).count()
 
     stats = [
         { "icon": "group", "label": "Active users", "value": str(active_users), "delta": "+6 this week", "deltaTone": "good" },
         { "icon": "shield_person", "label": "Roles assigned", "value": f"{active_users} / {active_users}" },
         { "icon": "cloud_done", "label": "Service uptime", "value": "99.97", "unit": "%", "delta": "SLA 99.9%", "deltaTone": "good" },
-        { "icon": "database", "label": "DB latency p95", "value": "42", "unit": "ms" },
+        { "icon": "database", "label": "DB latency p95", "value": "12", "unit": "ms" },
         { "icon": "security", "label": "Security events", "value": str(security_events_count), "delta": "24 h window", "deltaTone": "neutral" },
     ]
 
@@ -105,22 +103,17 @@ async def get_admin_dashboard(db: AsyncSession = Depends(get_db), current_user: 
 
 
 @router.get("/doctor")
-async def get_doctor_dashboard(db: AsyncSession = Depends(get_db), current_user: User = Depends(require_role([UserRole.DOCTOR, UserRole.ADMIN]))):
+async def get_doctor_dashboard(current_user: User = Depends(require_role(UserRole.DOCTOR, UserRole.ADMIN))):
     # Stats
-    active_emp_q = await db.execute(select(func.count(User.id)).where(User.role == UserRole.EMPLOYEE))
-    active_emp = active_emp_q.scalar() or 0
+    active_emp = await User.find(User.role == UserRole.EMPLOYEE).count()
     
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    queue_q = await db.execute(
-        select(Appointment)
-        .where(Appointment.scheduled_at >= today_start)
-        .order_by(Appointment.scheduled_at.asc())
-    )
-    today_appts = queue_q.scalars().all()
+    today_appts = await Appointment.find(
+        Appointment.scheduled_at >= today_start
+    ).sort(+Appointment.scheduled_at).to_list()
     today_queue = len(today_appts)
 
-    jrissi_high_q = await db.execute(select(func.count(JRISSIRecord.id)).where(JRISSIRecord.risk_band == RiskBand.HIGH))
-    jrissi_high = jrissi_high_q.scalar() or 0
+    jrissi_high = await JRISSIRecord.find(JRISSIRecord.risk_band == RiskBand.HIGH).count()
 
     stats = [
         { "icon": "groups", "label": "Active employees", "value": str(active_emp) },
@@ -130,41 +123,58 @@ async def get_doctor_dashboard(db: AsyncSession = Depends(get_db), current_user:
         { "icon": "priority_high", "label": "Escalations", "value": "1" },
     ]
 
-    # Patients with high JRISSI
-    patients_q = await db.execute(
-        select(Patient, JRISSIRecord)
-        .join(JRISSIRecord, Patient.id == JRISSIRecord.patient_id)
-        .order_by(desc(JRISSIRecord.mhrs))
-        .limit(5)
-    )
+    # Patients with high JRISSI (latest)
+    # This requires an aggregation to get the latest per patient.
+    jrissi_high_records = await JRISSIRecord.aggregate([
+        {"$sort": {"computed_at": -1}},
+        {"$group": {
+            "_id": "$patient_id",
+            "mhrs": {"$first": "$mhrs"},
+            "risk_band": {"$first": "$risk_band"},
+        }},
+        {"$sort": {"mhrs": -1}},
+        {"$limit": 5}
+    ]).to_list()
+    
     patients_data = []
-    for pat, jrissi in patients_q.all():
+    for j_rec in jrissi_high_records:
+        pat = await Patient.get(j_rec["_id"])
+        if not pat:
+            continue
+            
         dept = getattr(pat, 'department', None)
         dept_str = dept.value.capitalize() if dept else "Engineering"
         
+        name_parts = pat.full_name.split(" ")
+        name = f"{name_parts[0][0]}. {name_parts[-1]}" if len(name_parts) > 1 else pat.full_name
+        
         patients_data.append({
-            "id": pat.id,
+            "id": str(pat.id),
             "employee_id": pat.employee_id,
-            "name": f"{pat.first_name[0]}. {pat.last_name}",
+            "name": name,
             "dept": dept_str,
-            "jrissi": jrissi.mhrs,
+            "jrissi": j_rec["mhrs"],
             "jr_delta": "+0",
             "last": "recently",
-            "flags": ["JRISSI High"] if jrissi.risk_band == RiskBand.HIGH else []
+            "flags": ["JRISSI High"] if j_rec["risk_band"] == RiskBand.HIGH.value else []
         })
 
     # Prepare queue data
     queue_data = []
     for appt in today_appts:
         # Fetch patient for the queue
-        pat_q = await db.execute(select(Patient).where(Patient.id == appt.patient_id))
-        pat = pat_q.scalar_one_or_none()
-        name = f"{pat.first_name[0]}. {pat.last_name}" if pat else "Unknown"
+        pat = await Patient.get(appt.patient_id)
+        if pat:
+            name_parts = pat.full_name.split(" ")
+            name = f"{name_parts[0][0]}. {name_parts[-1]}" if len(name_parts) > 1 else pat.full_name
+        else:
+            name = "Unknown"
+            
         icon = "event_available" if appt.status == AppointmentStatus.CHECKED_IN else "schedule"
         
         queue_data.append({
-            "id": appt.id,
-            "patient_id": pat.id if pat else None,
+            "id": str(appt.id),
+            "patient_id": str(pat.id) if pat else None,
             "employee_id": pat.employee_id if pat else "",
             "t": appt.scheduled_at.strftime("%H:%M"),
             "n": name,
@@ -181,19 +191,23 @@ async def get_doctor_dashboard(db: AsyncSession = Depends(get_db), current_user:
 
 
 @router.get("/pharmacy")
-async def get_pharmacy_dashboard(db: AsyncSession = Depends(get_db), current_user: User = Depends(require_role([UserRole.PHARMACY, UserRole.ADMIN]))):
+async def get_pharmacy_dashboard(current_user: User = Depends(require_role(UserRole.PHARMACY, UserRole.ADMIN))):
     # Expiring soon
-    now = datetime.utcnow().date()
+    now = datetime.utcnow()
     thirty_days = now + timedelta(days=30)
-    expiring_q = await db.execute(
-        select(GRNLot)
-        .where(GRNLot.remaining_qty > 0)
-        .order_by(GRNLot.expiry_date)
-        .limit(5)
-    )
+    
+    expiring_soon_records = await GRNLot.find(
+        GRNLot.remaining_qty > 0
+    ).sort(+GRNLot.expiry_date).limit(5).to_list()
+    
     expiring_soon = []
-    for lot in expiring_q.scalars().all():
-        days_left = (lot.expiry_date - now).days
+    for lot in expiring_soon_records:
+        if isinstance(lot.expiry_date, datetime):
+            exp_date = lot.expiry_date.replace(tzinfo=None)
+        else:
+            exp_date = datetime.combine(lot.expiry_date, datetime.min.time())
+            
+        days_left = (exp_date - now).days
         tone = "low"
         if days_left < 15:
             tone = "high"
@@ -210,14 +224,15 @@ async def get_pharmacy_dashboard(db: AsyncSession = Depends(get_db), current_use
         })
 
     # Stats
-    skus_q = await db.execute(select(func.count(InventoryItem.id)).where(InventoryItem.total_quantity > 0))
-    skus_in_stock = skus_q.scalar() or 0
+    skus_in_stock = await InventoryItem.find(InventoryItem.total_quantity > 0).count()
     
-    expiring_30d_q = await db.execute(select(func.count(GRNLot.id)).where(GRNLot.remaining_qty > 0, GRNLot.expiry_date <= thirty_days))
-    expiring_30d = expiring_30d_q.scalar() or 0
+    # Needs to handle both datetime and date formats gracefully, but we'll assume expiry_date is comparable
+    expiring_30d = await GRNLot.find(
+        GRNLot.remaining_qty > 0, 
+        GRNLot.expiry_date <= thirty_days
+    ).count()
     
-    oos_q = await db.execute(select(func.count(InventoryItem.id)).where(InventoryItem.total_quantity <= 0))
-    out_of_stock = oos_q.scalar() or 0
+    out_of_stock = await InventoryItem.find(InventoryItem.total_quantity <= 0).count()
 
     stats = [
         { "icon": "inventory", "label": "SKUs in stock", "value": str(skus_in_stock) },
@@ -227,15 +242,15 @@ async def get_pharmacy_dashboard(db: AsyncSession = Depends(get_db), current_use
         { "icon": "savings", "label": "Stock value", "value": "LKR 1.2 M" },
     ]
     
-    audit_q = await db.execute(select(AuditLog).order_by(desc(AuditLog.created_at)).limit(4))
+    recent_audit = await AuditLog.find().sort(-AuditLog.created_at).limit(4).to_list()
     grn_activity = []
-    for a in audit_q.scalars().all():
+    for a in recent_audit:
         grn_activity.append({
             "t": a.created_at.strftime("%H:%M"),
             "who": a.actor_label,
             "action": a.action,
             "sub": a.target,
-            "icon": "inventory_2" if "GRN" in a.action else "pill"
+            "icon": "inventory_2" if "grn" in a.action.lower() else "pill"
         })
         
     top_dispensed = [
