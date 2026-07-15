@@ -46,15 +46,21 @@ export function PharmacyInventory() {
         </div>
       </header>
 
-      {/* Stats */}
+      {/* Stats — computed from real data */}
       <Card padding={0}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
-          {[
-            { icon: 'inventory',     label: 'SKUs in stock',  value: '247' },
-            { icon: 'schedule',      label: 'Expiring < 30 d', value: '8',  delta: '2 critical', deltaTone: 'bad' },
-            { icon: 'block',         label: 'Out of stock',   value: '3', deltaTone: 'bad' },
-            { icon: 'savings',       label: 'Stock value',    value: 'LKR 1.2 M', unit: '' },
-          ].map((s, i) => (
+          {(() => {
+            const totalSkus = stock.length;
+            const oos = stock.filter(s => s.oos).length;
+            const critical = stock.filter(s => s.tone === 'high').length;
+            const expiring = stock.filter(s => s.tone === 'high' || s.tone === 'moderate').length;
+            return [
+              { icon: 'inventory',  label: 'SKUs in stock',  value: totalSkus },
+              { icon: 'schedule',   label: 'Expiring < 90d', value: expiring, delta: `${critical} critical`, deltaTone: critical > 0 ? 'bad' : 'good' },
+              { icon: 'block',      label: 'Out of stock',   value: oos, deltaTone: oos > 0 ? 'bad' : 'good' },
+              { icon: 'inventory_2',label: 'Total units',    value: stock.reduce((sum, s) => sum + s.qty, 0).toLocaleString() },
+            ];
+          })().map((s, i) => (
             <div key={i} style={{ borderRight: i < 3 ? '1px solid var(--border-1)' : 0 }}>
               <StatTile {...s} />
             </div>

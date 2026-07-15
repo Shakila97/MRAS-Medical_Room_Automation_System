@@ -127,23 +127,31 @@ export function EmployeeWellness() {
             <div className="type-h3" style={{ marginTop: 2 }}>Your timeline</div>
           </div>
           <div>
-            {[
-              { d: 'Today',   t: '08:14', e: 'Wellness score updated to 73', icon: 'trending_up', tone: 'success' },
-              { d: 'Today',   t: '07:30', e: 'Synced fitness data · 7,432 steps yesterday', icon: 'sync', tone: 'info' },
-              { d: 'Yesterday', t: '14:20', e: 'Pre-visit briefing prepared for Tue 10:00', icon: 'description', tone: 'info' },
-              { d: '12 May',  t: '09:34', e: 'Allergy follow-up · cetirizine prescribed', icon: 'medication', tone: 'primary' },
-              { d: '05 May',  t: '10:15', e: 'JRISSI self-report submitted', icon: 'psychology', tone: 'primary' },
-              { d: '28 Apr',  t: '09:00', e: 'Annual health check completed', icon: 'check_circle', tone: 'success' },
-            ].map((row, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '80px 36px 1fr 80px', gap: 12, alignItems: 'center', padding: '12px 20px', borderTop: i === 0 ? 0 : '1px solid var(--border-1)' }}>
-                <span className="type-mono" style={{ fontSize: 12, color: 'var(--fg-3)' }}>{row.d}</span>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg-canvas)', border: '1px solid var(--border-1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name={row.icon} size={20} style={{ color: `var(--${row.tone === 'primary' ? 'primary' : row.tone})` }} />
-                </div>
-                <span className="type-body-s" style={{ color: 'var(--fg-1)' }}>{row.e}</span>
-                <span className="type-mono" style={{ fontSize: 12, color: 'var(--fg-3)', textAlign: 'right' }}>{row.t}</span>
-              </div>
-            ))}
+            {appointments.length > 0 ? (
+              appointments.slice(0, 6).map((appt, i) => {
+                const isPast = new Date(appt.scheduled_at) < new Date();
+                const icon = appt.status === 'CANCELLED' ? 'cancel' : isPast ? 'check_circle' : 'event';
+                const tone = appt.status === 'CANCELLED' ? 'danger' : isPast ? 'success' : 'info';
+                return (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '80px 36px 1fr 80px', gap: 12, alignItems: 'center', padding: '12px 20px', borderTop: i === 0 ? 0 : '1px solid var(--border-1)' }}>
+                    <span className="type-mono" style={{ fontSize: 12, color: 'var(--fg-3)' }}>
+                      {new Date(appt.scheduled_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                    </span>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--bg-canvas)', border: '1px solid var(--border-1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon name={icon} size={20} style={{ color: `var(--${tone})` }} />
+                    </div>
+                    <span className="type-body-s" style={{ color: 'var(--fg-1)' }}>
+                      {appt.notes || 'Routine check-in'} · {appt.status?.charAt(0) + appt.status?.slice(1).toLowerCase()}
+                    </span>
+                    <span className="type-mono" style={{ fontSize: 12, color: 'var(--fg-3)', textAlign: 'right' }}>
+                      {new Date(appt.scheduled_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                );
+              })
+            ) : (
+              <div style={{ padding: '24px 20px', textAlign: 'center', color: 'var(--fg-3)' }}>No activity yet.</div>
+            )}
           </div>
         </Card>
 

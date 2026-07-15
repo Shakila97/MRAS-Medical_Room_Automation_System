@@ -21,12 +21,21 @@ export function SoapEditor() {
   const [p, setP] = React.useState('');
   const [consultId, setConsultId] = React.useState(null);
   const [saving, setSaving] = React.useState(false);
+  const [dashboard, setDashboard] = React.useState(null);
+  const [consultHistory, setConsultHistory] = React.useState([]);
 
   React.useEffect(() => {
     // Create draft on load
     api.post('/consultations/', { patient_id: patient.id })
       .then(res => setConsultId(res.data.id))
       .catch(err => console.error("Failed to create draft", err));
+    // Load dashboard & history for side rail
+    api.get(`/patients/${patient.id}/dashboard`)
+      .then(res => setDashboard(res.data))
+      .catch(err => console.error("Failed to load dashboard", err));
+    api.get(`/consultations/patient/${patient.id}?limit=4`)
+      .then(res => setConsultHistory(res.data))
+      .catch(err => console.error("Failed to load consultation history", err));
   }, [patient.id]);
 
   const handleSaveDraft = async () => {
@@ -128,41 +137,46 @@ export function SoapEditor() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Card>
             <CardHeader eyebrow="Vitals · today" title="At a glance" />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              {[
-                { l: 'BP', v: '128/84', u: 'mmHg', t: 'warning' },
-                { l: 'HR', v: '76', u: 'bpm', t: 'success' },
-                { l: 'Temp', v: '36.7', u: '°C', t: 'success' },
-                { l: 'SpO₂', v: '97', u: '%', t: 'success' },
-              ].map((m, i) => (
-                <div key={i} style={{ padding: 12, borderRadius: 8, background: 'var(--bg-canvas)', border: '1px solid var(--border-1)' }}>
-                  <div className="type-caption" style={{ marginBottom: 4 }}>{m.l}</div>
-                  <div className="type-clinical" style={{ fontSize: 18 }}>{m.v}<span style={{ font: '400 11px var(--font-sans)', color: 'var(--fg-3)', marginLeft: 3 }}>{m.u}</span></div>
-                  <div style={{ marginTop: 4, height: 3, borderRadius: 999, background: `var(--${m.t})`, opacity: 0.7 }} />
-                </div>
-              ))}
-            </div>
+            {dashboard?.latest_vitals ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {[
+                  { l: 'HR', v: dashboard.latest_vitals.heart_rate ?? '—', u: 'bpm', t: (dashboard.latest_vitals.heart_rate >= 60 && dashboard.latest_vitals.heart_rate <= 100) ? 'success' : 'warning' },
+                  { l: 'SpO₂', v: dashboard.latest_vitals.spo2 ?? '—', u: '%', t: (dashboard.latest_vitals.spo2 ?? 100) >= 95 ? 'success' : 'warning' },
+                  { l: 'Temp', v: dashboard.latest_vitals.temperature ?? '—', u: '°C', t: (dashboard.latest_vitals.temperature ?? 37) <= 37.5 ? 'success' : 'warning' },
+                  { l: 'Steps', v: dashboard.latest_vitals.steps?.toLocaleString() ?? '—', u: 'today', t: (dashboard.latest_vitals.steps ?? 0) >= 8000 ? 'success' : 'info' },
+                ].map((m, i) => (
+                  <div key={i} style={{ padding: 12, borderRadius: 8, background: 'var(--bg-canvas)', border: '1px solid var(--border-1)' }}>
+                    <div className="type-caption" style={{ marginBottom: 4 }}>{m.l}</div>
+                    <div className="type-clinical" style={{ fontSize: 18 }}>{m.v}<span style={{ font: '400 11px var(--font-sans)', color: 'var(--fg-3)', marginLeft: 3 }}>{m.u}</span></div>
+                    <div style={{ marginTop: 4, height: 3, borderRadius: 999, background: `var(--${m.t})`, opacity: 0.7 }} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ color: 'var(--fg-3)', fontSize: 13, padding: '8px 0' }}>No vitals recorded today.</div>
+            )}
           </Card>
 
           <Card>
             <CardHeader eyebrow="Known flags" title="Patient context" />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
-              <Chip tone="high" dot>JRISSI High · 14d</Chip>
-              <Chip tone="warning">Asthma</Chip>
-              <Chip tone="info">Allergy: pollen</Chip>
+              {patient.jrissi ? <Chip tone="high" dot>JRISSI {patient.jrissi}</Chip> : null}
+              {dashboard?.conditions?.map((c, i) => <Chip key={i} tone="warning">{c}</Chip>)}
+              {(!dashboard || !dashboard.conditions?.length) && !patient.jrissi && <span style={{ color: 'var(--fg-3)', fontSize: 13 }}>No flags on record.</span>}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[
-                { d: '12 May', t: 'BP review · borderline' },
-                { d: '05 May', t: 'JRISSI questionnaire · 68' },
-                { d: '28 Apr', t: 'Allergic rhinitis consult' },
-                { d: '14 Apr', t: 'Annual health check' },
-              ].map((r, i) => (
-                <div key={i} style={{ display: 'flex', gap: 10, paddingBottom: 8, borderBottom: i < 3 ? '1px dashed var(--border-1)' : 0 }}>
-                  <span className="type-mono" style={{ fontSize: 12, color: 'var(--fg-3)', width: 48 }}>{r.d}</span>
-                  <span className="type-body-s" style={{ color: 'var(--fg-1)' }}>{r.t}</span>
+              {consultHistory.length > 0 ? consultHistory.map((r, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, paddingBottom: 8, borderBottom: i < consultHistory.length - 1 ? '1px dashed var(--border-1)' : 0 }}>
+                  <span className="type-mono" style={{ fontSize: 12, color: 'var(--fg-3)', width: 56, flexShrink: 0 }}>
+                    {new Date(r.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                  </span>
+                  <span className="type-body-s" style={{ color: 'var(--fg-1)' }}>
+                    {r.assessment || r.subjective?.slice(0, 40) || 'Consultation'}{r.status === 'signed' ? '' : ' · draft'}
+                  </span>
                 </div>
-              ))}
+              )) : (
+                <div style={{ color: 'var(--fg-3)', fontSize: 13 }}>No prior consultations on record.</div>
+              )}
             </div>
           </Card>
         </div>
