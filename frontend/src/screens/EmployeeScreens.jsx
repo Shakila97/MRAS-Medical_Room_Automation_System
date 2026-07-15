@@ -177,7 +177,113 @@ export function EmployeeWellness() {
 // ============================================================================
 // 2. APPOINTMENT SCHEDULING + QR CHECK-IN
 // ============================================================================
+
+// ============================================================================
+// 1b. DAILY HEALTH CHECK-IN
+// ============================================================================
+export function DailyCheckIn() {
+  const [form, setForm] = useState({ heart_rate: '', spo2: '', temperature: '', steps: '', sleep_hours: '', mood: 3 });
+  const [saving, setSaving] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState(null);
+
+  const set = (k) => (v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSubmit = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const payload = {};
+      if (form.heart_rate)   payload.heart_rate   = parseInt(form.heart_rate);
+      if (form.spo2)         payload.spo2         = parseFloat(form.spo2);
+      if (form.temperature)  payload.temperature  = parseFloat(form.temperature);
+      if (form.steps)        payload.steps        = parseInt(form.steps);
+      if (form.sleep_hours)  payload.sleep_hours  = parseFloat(form.sleep_hours);
+      payload.mood = form.mood;
+      await api.post('/me/vitals', payload);
+      setDone(true);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const moods = [
+    { v: 1, icon: 'sentiment_very_dissatisfied', label: 'Very low' },
+    { v: 2, icon: 'sentiment_dissatisfied',      label: 'Low' },
+    { v: 3, icon: 'sentiment_neutral',           label: 'Okay' },
+    { v: 4, icon: 'sentiment_satisfied',         label: 'Good' },
+    { v: 5, icon: 'sentiment_very_satisfied',    label: 'Great' },
+  ];
+
+  if (done) return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, paddingTop: 48 }}>
+      <div style={{ width: 64, height: 64, borderRadius: 32, background: 'var(--success-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="check" size={32} style={{ color: 'var(--success)' }} />
+      </div>
+      <h1 className="type-h1">Check-in saved!</h1>
+      <p className="type-body" style={{ textAlign: 'center', maxWidth: 360 }}>
+        Your health data has been recorded. Your wellness score will be updated shortly.
+      </p>
+      <Button kind="secondary" onClick={() => { setDone(false); setForm({ heart_rate: '', spo2: '', temperature: '', steps: '', sleep_hours: '', mood: 3 }); }}>
+        Log another reading
+      </Button>
+    </div>
+  );
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <header>
+        <div className="type-eyebrow" style={{ marginBottom: 6 }}>Employee · self-report</div>
+        <h1 className="type-h1">Daily health check-in</h1>
+        <p className="type-body" style={{ marginTop: 6 }}>Log your vitals for today. All fields are optional — submit whatever you have.</p>
+      </header>
+      {error && <Banner tone="danger" title="Submission error">{error}</Banner>}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <Card>
+          <CardHeader eyebrow="Vitals" title="Today's readings" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <Input label="Heart Rate (bpm)" value={form.heart_rate} onChange={set('heart_rate')} placeholder="e.g. 72" />
+            <Input label="SpO₂ (%)" value={form.spo2} onChange={set('spo2')} placeholder="e.g. 98" />
+            <Input label="Temperature (°C)" value={form.temperature} onChange={set('temperature')} placeholder="e.g. 36.8" />
+            <Input label="Steps today" value={form.steps} onChange={set('steps')} placeholder="e.g. 8500" />
+            <Input label="Sleep last night (hours)" value={form.sleep_hours} onChange={set('sleep_hours')} placeholder="e.g. 7.5" />
+          </div>
+        </Card>
+        <Card>
+          <CardHeader eyebrow="Mood" title="How are you feeling?" />
+          <div style={{ display: 'flex', justifyContent: 'space-around', padding: '20px 0' }}>
+            {moods.map(m => (
+              <button key={m.v} onClick={() => set('mood')(m.v)} style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '14px 12px',
+                borderRadius: 12, border: `2px solid ${form.mood === m.v ? 'var(--primary)' : 'var(--border-1)'}`,
+                background: form.mood === m.v ? 'var(--primary-tint)' : 'transparent',
+                cursor: 'pointer', transition: 'all var(--dur-micro) var(--ease-std)',
+              }}>
+                <Icon name={m.icon} size={32} style={{ color: form.mood === m.v ? 'var(--primary)' : 'var(--fg-3)' }} />
+                <span style={{ font: '500 11px var(--font-sans)', color: form.mood === m.v ? 'var(--primary)' : 'var(--fg-3)' }}>{m.label}</span>
+              </button>
+            ))}
+          </div>
+          <div style={{ marginTop: 12, paddingTop: 14, borderTop: '1px dashed var(--border-1)' }}>
+            <div className="type-caption" style={{ marginBottom: 14, color: 'var(--fg-3)' }}>
+              Data is only visible to your assigned doctor.
+            </div>
+            <Button kind="primary" icon="check_circle" style={{ width: '100%', justifyContent: 'center' }}
+              onClick={handleSubmit} disabled={saving}>
+              {saving ? 'Saving...' : 'Submit check-in'}
+            </Button>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 export function AppointmentScheduling() {
+
   const [date, setDate] = React.useState(new Date().toISOString().split('T')[0]);
   const [slot, setSlot] = React.useState('10:00');
   const [loading, setLoading] = React.useState(false);

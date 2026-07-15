@@ -18,7 +18,7 @@ from src.modules.auth_service import get_current_user, require_role
 from src.modules.notification_engine import manager
 from src.schemas.wellness import (
     WellnessHome, Metric, AppointmentCreate, AppointmentRead,
-    CheckInRequest, CheckInResponse,
+    CheckInRequest, CheckInResponse, VitalSubmit, VitalRead,
 )
 
 router = APIRouter(tags=["Wellness & Appointments"])
@@ -84,6 +84,41 @@ async def my_wellness(
         score_delta=current_score - prev_score,
         series=series,
         metrics=metrics,
+    )
+
+
+@router.post("/me/vitals", response_model=VitalRead, status_code=201,
+             summary="Employee daily health check-in")
+async def submit_vitals(
+    data: VitalSubmit,
+    user: User = Depends(get_current_user),
+):
+    patient = await Patient.find_one(Patient.user_id == user.id)
+    if not patient:
+        from fastapi import HTTPException, status as http_status
+        raise HTTPException(http_status.HTTP_404_NOT_FOUND, "Patient profile not found")
+
+    vital = Vital(
+        patient_id=patient.id,
+        heart_rate=data.heart_rate,
+        spo2=data.spo2,
+        temperature=data.temperature,
+        weight_kg=data.weight_kg,
+        steps=data.steps,
+        sleep_hours=data.sleep_hours,
+        source="self-report",
+        recorded_at=datetime.now(timezone.utc),
+    )
+    await vital.insert()
+    return VitalRead(
+        heart_rate=vital.heart_rate,
+        spo2=vital.spo2,
+        temperature=vital.temperature,
+        weight_kg=vital.weight_kg,
+        steps=vital.steps,
+        sleep_hours=vital.sleep_hours,
+        source=vital.source,
+        recorded_at=vital.recorded_at,
     )
 
 

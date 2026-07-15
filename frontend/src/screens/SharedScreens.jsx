@@ -1,29 +1,47 @@
 /* eslint-disable */
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { api } from '../api/client';
 import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
 import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
 // ============================================================================
 // 1. NOTIFICATIONS CENTER (Closed-loop, with escalation timeline)
 // ============================================================================
 export function NotificationsCenter() {
-  const [filter, setFilter] = React.useState('all');
-  const groups = [
-    {
-      label: 'Today · 14 May',
-      items: [
-        { id: 'n1', icon: 'priority_high', tone: 'danger', t: '09:30', title: 'JRISSI escalation pending', body: 'A. Perera (E-002417) — sustained High for 14 days. Awaiting your acknowledgement.', cta: 'Open record', stage: 'Escalated to doctor', stages: ['Detected', 'Closed-loop ping', 'Escalated to doctor', 'Acknowledge', 'Resolve'], stageAt: 2 },
-        { id: 'n2', icon: 'cloud',         tone: 'warning', t: '08:55', title: 'Forecast: pollen rising Thursday', body: '3 employees with seasonal allergy history flagged. Suggest pre-emptive cetirizine availability check.', cta: 'Review', stage: 'Action suggested', stages: ['Detected', 'Routed', 'Action suggested', 'Approved', 'Closed'], stageAt: 2 },
-        { id: 'n3', icon: 'inventory_2',   tone: 'warning', t: '08:30', title: 'Stock low: amoxicillin 250 mg', body: '6 packs remaining · earliest expiry 26 May. Reorder threshold breached.', cta: 'Reorder', stage: 'Auto-PO drafted', stages: ['Detected', 'Auto-PO drafted', 'Pharmacy review', 'Sent', 'Received'], stageAt: 1 },
-      ]
-    },
-    {
-      label: 'Yesterday · 13 May',
-      items: [
-        { id: 'n4', icon: 'check_circle', tone: 'success', t: '17:22', title: 'Pre-visit briefing prepared', body: 'For Mon 09:00 with S. Fernando · ready in inbox.', cta: 'View', stage: 'Delivered', stages: ['Detected', 'Drafted', 'Doctor review', 'Delivered'], stageAt: 3 },
-        { id: 'n5', icon: 'error',        tone: 'danger',  t: '23:58', title: 'Climate service unreachable', body: 'Forecast refresh failed. Auto-retrying every 30 min. Last successful sync 14:00.', cta: 'Inspect', stage: 'Retrying', stages: ['Detected', 'Retry queued', 'Auto-resolved'], stageAt: 1 },
-      ]
+  const [filter, setFilter] = useState('all');
+  const [notifs, setNotifs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/notifications/?status=open&limit=50')
+      .then(res => setNotifs(res.data))
+      .catch(err => console.error('Failed to load notifications:', err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleAck = async (id) => {
+    try {
+      await api.post(`/notifications/${id}/ack`);
+      setNotifs(prev => prev.map(n => n.id === id ? { ...n, status: 'acked' } : n));
+    } catch (e) { console.error(e); }
+  };
+
+  const toneMap = { danger: 'danger', warning: 'warning', info: 'info', success: 'success' };
+  const filtered = filter === 'all' ? notifs : notifs.filter(n => n.tone === filter || n.status === filter);
+
+  // Group by date
+  const groups = [];
+  const seen = new Set();
+  for (const n of filtered) {
+    const dateLabel = n.created_at
+      ? new Date(n.created_at).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+      : 'Today';
+    if (!seen.has(dateLabel)) {
+      seen.add(dateLabel);
+      groups.push({ label: dateLabel, items: [] });
     }
-  ];
+    groups.find(g => g.label === dateLabel).items.push(n);
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
@@ -41,11 +59,11 @@ export function NotificationsCenter() {
       <Card padding={0}>
         <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-1)', display: 'flex', gap: 4 }}>
           {[
-            { v: 'all', l: 'All', n: 5 },
-            { v: 'danger', l: 'Critical', n: 2 },
-            { v: 'warning', l: 'Watch', n: 2 },
-            { v: 'info', l: 'Info', n: 1 },
-            { v: 'resolved', l: 'Resolved', n: 12 },
+            { v: 'all',     l: 'All',      n: notifs.length },
+            { v: 'danger',  l: 'Critical', n: notifs.filter(n => n.tone === 'danger').length },
+            { v: 'warning', l: 'Watch',    n: notifs.filter(n => n.tone === 'warning').length },
+            { v: 'info',    l: 'Info',     n: notifs.filter(n => n.tone === 'info').length },
+            { v: 'acked',   l: 'Resolved', n: notifs.filter(n => n.status === 'acked' || n.status === 'resolved').length },
           ].map(t => (
             <button key={t.v} onClick={() => setFilter(t.v)} style={{
               padding: '8px 14px', borderRadius: 8, border: 0, cursor: 'pointer',
@@ -60,49 +78,43 @@ export function NotificationsCenter() {
           ))}
         </div>
 
+        {loading && <div style={{ padding: 32 }}><Skeleton rows={5} /></div>}
+
+        {!loading && groups.length === 0 && (
+          <EmptyState icon="notifications_none" title="All clear" description="No open notifications right now." />
+        )}
+
         {groups.map((g, gi) => (
           <div key={gi}>
             <div style={{ padding: '14px 20px 6px', background: 'var(--bg-canvas)' }}>
               <div className="type-eyebrow">{g.label}</div>
             </div>
-            {g.items.map((it, i) => (
-              <div key={it.id} style={{ display: 'grid', gridTemplateColumns: '44px 1fr 360px 100px', gap: 16, alignItems: 'flex-start', padding: '16px 20px', borderTop: '1px solid var(--border-1)' }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: `var(--${it.tone}-bg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name={it.icon} size={20} style={{ color: `var(--${it.tone})` }} />
-                </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className="type-label" style={{ color: 'var(--fg-1)' }}>{it.title}</span>
-                    <Chip tone={it.tone} dot style={{ padding: '2px 8px' }}>{it.stage}</Chip>
+            {g.items.map((it, i) => {
+              const tone = it.tone || 'info';
+              const icon = it.icon || (tone === 'danger' ? 'priority_high' : tone === 'warning' ? 'warning' : tone === 'success' ? 'check_circle' : 'info');
+              const timeStr = it.created_at ? new Date(it.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '';
+              const isAcked = it.status === 'acked' || it.status === 'resolved';
+              return (
+                <div key={it.id} style={{ display: 'grid', gridTemplateColumns: '44px 1fr 100px', gap: 16, alignItems: 'flex-start', padding: '16px 20px', borderTop: '1px solid var(--border-1)', opacity: isAcked ? 0.6 : 1 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: `var(--${tone}-bg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name={icon} size={20} style={{ color: `var(--${tone})` }} />
                   </div>
-                  <div className="type-body-s" style={{ marginTop: 4 }}>{it.body}</div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className="type-label" style={{ color: 'var(--fg-1)' }}>{it.title}</span>
+                      <Chip tone={tone} dot style={{ padding: '2px 8px' }}>{it.status || 'open'}</Chip>
+                    </div>
+                    <div className="type-body-s" style={{ marginTop: 4 }}>{it.body || it.message}</div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                    <span className="type-mono" style={{ fontSize: 11, color: 'var(--fg-3)' }}>{timeStr}</span>
+                    {!isAcked && (
+                      <Button kind="secondary" size="sm" onClick={() => handleAck(it.id)}>Acknowledge</Button>
+                    )}
+                  </div>
                 </div>
-                {/* Stage timeline */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-                  {it.stages.map((s, si) => {
-                    const done = si < it.stageAt;
-                    const active = si === it.stageAt;
-                    return (
-                      <React.Fragment key={si}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flex: '0 0 auto' }}>
-                          <span style={{
-                            width: 14, height: 14, borderRadius: 999,
-                            background: done ? `var(--${it.tone})` : active ? `var(--${it.tone}-bg)` : 'var(--bg-canvas)',
-                            border: active ? `2px solid var(--${it.tone})` : done ? 'none' : '1.5px solid var(--border-2)',
-                          }} />
-                          <span style={{ font: '500 9px var(--font-sans)', color: done || active ? 'var(--fg-2)' : 'var(--fg-4)', textAlign: 'center', maxWidth: 60, lineHeight: 1.2, whiteSpace: 'nowrap' }}>{s}</span>
-                        </div>
-                        {si < it.stages.length - 1 && <div style={{ flex: 1, height: 1, background: done ? `var(--${it.tone})` : 'var(--border-1)', marginTop: -12 }} />}
-                      </React.Fragment>
-                    );
-                  })}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                  <span className="type-mono" style={{ fontSize: 11, color: 'var(--fg-3)' }}>{it.t}</span>
-                  <Button kind="secondary" size="sm">{it.cta}</Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ))}
       </Card>

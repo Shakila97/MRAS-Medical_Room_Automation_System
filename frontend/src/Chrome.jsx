@@ -1,8 +1,10 @@
 /* eslint-disable */
 // MRAS Dashboard chrome — app bar, sidebar, role switcher
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Icon, Avatar } from './widgets.jsx';
 import { useAuth } from './context/AuthContext';
+import { api } from './api/client';
 
 export const NAV_BY_ROLE = {
   doctor: [
@@ -15,9 +17,10 @@ export const NAV_BY_ROLE = {
     { id: 'reports',   icon: 'description', label: 'Reports' },
   ],
   employee: [
-    { id: 'home',    icon: 'home',         label: 'Home' },
-    { id: 'checkin', icon: 'qr_code_2',    label: 'Check-in' },
-    { id: 'health',  icon: 'monitor_heart', label: 'My health' },
+    { id: 'home',    icon: 'home',          label: 'Home' },
+    { id: 'vitals',  icon: 'monitor_heart', label: 'Daily check-in' },
+    { id: 'checkin', icon: 'qr_code_2',    label: 'Appointments' },
+    { id: 'health',  icon: 'favorite',     label: 'My health' },
     { id: 'history', icon: 'history',      label: 'History' },
   ],
   pharmacy: [
@@ -45,6 +48,22 @@ export const ROLE_META = {
 
 export function AppBar({ role, onRoleChange, onMenu }) {
   const meta = ROLE_META[role];
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [notifCount, setNotifCount] = useState(0);
+
+  useEffect(() => {
+    const fetchCount = () =>
+      api.get('/notifications/?status=open&limit=50')
+        .then(res => setNotifCount(Array.isArray(res.data) ? res.data.filter(n => n.status === 'open').length : 0))
+        .catch(() => {});
+    fetchCount();
+    const t = setInterval(fetchCount, 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const displayName = user?.full_name || meta.name;
+
   return (
     <div style={{
       height: 'var(--appbar-h)',
@@ -80,18 +99,24 @@ export function AppBar({ role, onRoleChange, onMenu }) {
         <kbd style={{ font: '500 10px var(--font-mono)', color: 'var(--fg-3)', border: '1px solid var(--border-1)', borderRadius: 4, padding: '1px 5px' }}>⌘K</kbd>
       </div>
 
-      {/* Notifications */}
-      <button style={{
+      {/* Notifications bell */}
+      <button onClick={() => navigate('/notifications')} style={{
         border: 0, background: 'transparent', cursor: 'pointer',
         width: 36, height: 36, borderRadius: 8, position: 'relative',
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       }}>
         <Icon name="notifications" size={20} />
-        <span style={{
-          position: 'absolute', top: 6, right: 7,
-          width: 8, height: 8, borderRadius: 999, background: 'var(--danger)',
-          boxShadow: '0 0 0 2px var(--bg-canvas)',
-        }} />
+        {notifCount > 0 && (
+          <span style={{
+            position: 'absolute', top: 4, right: 4,
+            minWidth: 16, height: 16, borderRadius: 999,
+            background: 'var(--danger)', color: '#fff',
+            font: '600 9px var(--font-mono)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '0 3px',
+            boxShadow: '0 0 0 2px var(--bg-canvas)',
+          }}>{notifCount > 9 ? '9+' : notifCount}</span>
+        )}
       </button>
 
       {/* Role switcher + avatar */}
@@ -105,16 +130,17 @@ export function AppBar({ role, onRoleChange, onMenu }) {
           <option value="pharmacy">Pharmacy view</option>
           <option value="admin">Admin view</option>
         </select>
-        <Avatar name={meta.name} size={32} color={meta.accent} />
+        <Avatar name={displayName} size={32} color={meta.accent} />
       </div>
     </div>
   );
 }
 
 export function Sidebar({ role, screen, onNavigate, collapsed }) {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const items = NAV_BY_ROLE[role];
   const meta = ROLE_META[role];
+  const displayName = user?.full_name || meta.name;
   const w = collapsed ? 'var(--sidebar-w-c)' : 'var(--sidebar-w)';
   return (
     <aside style={{
@@ -134,7 +160,7 @@ export function Sidebar({ role, screen, onNavigate, collapsed }) {
         <div style={{ width: 6, alignSelf: 'stretch', borderRadius: 3, background: meta.accent }} />
         {!collapsed && (
           <div style={{ minWidth: 0 }}>
-            <div className="type-label" style={{ color: 'var(--fg-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{meta.name}</div>
+            <div className="type-label" style={{ color: 'var(--fg-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName}</div>
             <div className="type-caption" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{meta.sub}</div>
           </div>
         )}

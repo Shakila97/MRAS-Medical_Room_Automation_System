@@ -5,6 +5,27 @@ from typing import Optional, List
 from pydantic import BaseModel
 
 
+class VitalSubmit(BaseModel):
+    heart_rate: Optional[int] = None
+    spo2: Optional[float] = None
+    temperature: Optional[float] = None
+    weight_kg: Optional[float] = None
+    steps: Optional[int] = None
+    sleep_hours: Optional[float] = None
+    mood: Optional[int] = None       # 1-5 self-reported mood score
+
+
+class VitalRead(BaseModel):
+    heart_rate: Optional[int] = None
+    spo2: Optional[float] = None
+    temperature: Optional[float] = None
+    weight_kg: Optional[float] = None
+    steps: Optional[int] = None
+    sleep_hours: Optional[float] = None
+    source: str
+    recorded_at: datetime
+
+
 class Metric(BaseModel):
     key: str
     label: str

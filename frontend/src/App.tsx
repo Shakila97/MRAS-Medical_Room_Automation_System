@@ -15,7 +15,7 @@ import { SoapEditor, PrescriptionWriter, JrissiDeepDive, ForecastingView, Jrissi
 
 // ── Employee screens
 import { EmployeeHome } from './screens/EmployeeHome.jsx';
-import { EmployeeWellness, AppointmentScheduling, KioskCheckIn } from './screens/EmployeeScreens.jsx';
+import { EmployeeWellness, DailyCheckIn, AppointmentScheduling, KioskCheckIn } from './screens/EmployeeScreens.jsx';
 
 // ── Pharmacy screens
 import { PharmacyDashboard } from './screens/PharmacyDashboard.jsx';
@@ -87,6 +87,7 @@ export default function App() {
         {/* ── Employee ── */}
         <Route path="/employee" element={<Navigate to="/employee/home" replace />} />
         <Route path="/employee/home"    element={<RoleLayout role="employee"><EmployeeWellness /></RoleLayout>} />
+        <Route path="/employee/vitals"  element={<RoleLayout role="employee"><DailyCheckIn /></RoleLayout>} />
         <Route path="/employee/checkin" element={<RoleLayout role="employee"><AppointmentScheduling /></RoleLayout>} />
         <Route path="/employee/health"  element={<RoleLayout role="employee"><KioskCheckIn /></RoleLayout>} />
         <Route path="/employee/history" element={<RoleLayout role="employee"><EmployeeHome onCheckIn={() => {}} /></RoleLayout>} />

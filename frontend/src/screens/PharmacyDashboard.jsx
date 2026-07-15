@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
 import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
+const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 export function PharmacyDashboard({ onOpenInventory }) {
   const [data, setData] = useState(null);
   const [queue, setQueue] = useState([]);
@@ -42,7 +43,7 @@ export function PharmacyDashboard({ onOpenInventory }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16 }}>
         <div>
-          <div className="type-eyebrow" style={{ marginBottom: 6 }}>Thursday · 14 May 2026</div>
+          <div className="type-eyebrow" style={{ marginBottom: 6 }}>{todayLabel}</div>
           <h1 className="type-h1">Pharmacy dashboard</h1>
           <p className="type-body" style={{ marginTop: 6 }}>2 batches expiring within 30 days. 3 SKUs out of stock. FEFO automation healthy.</p>
         </div>

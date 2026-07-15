@@ -193,32 +193,67 @@ export function PrescriptionWriter() {
   const location = useLocation();
   const patient = location.state?.patient || { id: 1, full_name: 'A. Perera' };
   
-  const [saving, setSaving] = React.useState(false);
+  const [saving, setSaving] = useState(false);
+  const [searchQ, setSearchQ] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [rx, setRx] = useState([]);
+  const [toast, setToast] = useState(null);
 
-  const rx = [
-    { name: 'Cetirizine', brand: 'Zyrtec', strength: '10 mg', form: 'tab', dose: '1 tab OD', dur: '7 days', stock: 124, interactions: 0 },
-  ];
+  // Debounced drug search
+  React.useEffect(() => {
+    if (!searchQ.trim()) { setSearchResults([]); return; }
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await api.get(`/drugs?q=${encodeURIComponent(searchQ)}&limit=8`);
+        setSearchResults(res.data);
+      } catch (e) { console.error(e); }
+      finally { setSearching(false); }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQ]);
+
+  const addDrug = (drug) => {
+    setRx(prev => [...prev, {
+      drug_id: drug.id,
+      name: drug.generic_name,
+      brand: drug.brand_name || '',
+      strength: drug.strength || '',
+      form: drug.form || 'tab',
+      dose: '1 tab OD',
+      duration_days: 7,
+      route: 'oral',
+      instructions: '',
+      stock: drug.total_quantity ?? 0,
+    }]);
+    setSearchQ('');
+    setSearchResults([]);
+  };
+
+  const updateRx = (i, key, val) => setRx(prev => prev.map((r, idx) => idx === i ? { ...r, [key]: val } : r));
+  const removeRx = (i) => setRx(prev => prev.filter((_, idx) => idx !== i));
 
   const handleSignAndSend = async () => {
+    if (rx.length === 0) { alert('Add at least one medication.'); return; }
     setSaving(true);
     try {
-      // 1. Create prescription
-      const res = await api.post('/prescriptions', {
-        patient_id: patient.id,
-        drug_name: 'Cetirizine',
-        dosage: '1 tab OD',
-        frequency: 'Daily',
-        duration_days: 7,
-        instructions: 'Take in the evening'
-      });
-      const rxId = res.data.id;
-      // 2. Sign prescription
-      await api.post(`/prescriptions/${rxId}/sign`);
-      alert("Prescription signed and sent to pharmacy queue!");
-      navigate('/doctor/dashboard');
+      for (const r of rx) {
+        const res = await api.post('/prescriptions', {
+          patient_id: patient.id,
+          drug_name: `${r.name} ${r.strength}`.trim(),
+          dosage: r.dose,
+          frequency: r.dose,
+          duration_days: parseInt(r.duration_days) || 7,
+          instructions: r.instructions,
+        });
+        await api.post(`/prescriptions/${res.data.id}/sign`);
+      }
+      setToast({ tone: 'success', title: 'Prescriptions sent to pharmacy queue!' });
+      setTimeout(() => navigate('/doctor/dashboard'), 1800);
     } catch (err) {
       console.error(err);
-      alert("Failed to create prescription");
+      setToast({ tone: 'danger', title: 'Failed to create prescription. Please try again.' });
     } finally {
       setSaving(false);
     }
@@ -230,95 +265,132 @@ export function PrescriptionWriter() {
         <div>
           <div className="type-eyebrow" style={{ marginBottom: 6 }}>Consultation · prescription</div>
           <h1 className="type-h1">Prescription — {patient.full_name}</h1>
-          <p className="type-body" style={{ marginTop: 6 }}>Linked to today\u2019s consultation note · auto-sent to pharmacy on sign</p>
+          <p className="type-body" style={{ marginTop: 6 }}>Search the drug catalogue, add medications, then sign &amp; send to pharmacy.</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <Button kind="ghost" icon="content_copy">Copy from last visit</Button>
           <Button kind="secondary" icon="save" disabled={saving}>Save draft</Button>
-          <Button kind="primary" icon="send" onClick={handleSignAndSend} disabled={saving}>Sign &amp; send</Button>
+          <Button kind="primary" icon="send" onClick={handleSignAndSend} disabled={saving || rx.length === 0}>Sign &amp; send</Button>
         </div>
       </header>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
         <Card padding={0}>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-1)', display: 'flex', gap: 10, alignItems: 'center' }}>
-            <Input value="" placeholder="Search by generic, brand, or ATC code…" leading="search" style={{ flex: 1 }} onChange={() => {}} />
-            <Button kind="secondary" icon="qr_code_scanner" size="sm">Scan</Button>
+          {/* Drug search bar */}
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-1)', position: 'relative' }}>
+            <Input value={searchQ} placeholder="Search by generic, brand, or ATC code…" leading="search" style={{ width: '100%' }}
+              onChange={setSearchQ} />
+            {(searchResults.length > 0 || searching) && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 20, right: 20, zIndex: 99,
+                background: 'var(--surface-1)', border: '1px solid var(--border-1)', borderRadius: 10,
+                boxShadow: 'var(--shadow-2)', overflow: 'hidden',
+              }}>
+                {searching && <div style={{ padding: '12px 16px', color: 'var(--fg-3)', fontSize: 13 }}>Searching…</div>}
+                {searchResults.map((d, i) => (
+                  <button key={d.id} onClick={() => addDrug(d)} style={{
+                    width: '100%', padding: '12px 16px', textAlign: 'left', border: 0,
+                    borderTop: i > 0 ? '1px solid var(--border-1)' : 0,
+                    background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12,
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <Icon name="medication" size={20} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                    <div>
+                      <div style={{ font: '500 14px var(--font-sans)', color: 'var(--fg-1)' }}>{d.generic_name} {d.strength}</div>
+                      <div style={{ font: '400 12px var(--font-sans)', color: 'var(--fg-3)' }}>{d.brand_name || 'Generic'} · {d.form} · {d.total_quantity ?? 0} in stock</div>
+                    </div>
+                    <Icon name="add_circle" size={20} style={{ color: 'var(--primary)', marginLeft: 'auto' }} />
+                  </button>
+                ))}
+                {!searching && searchResults.length === 0 && searchQ.trim() && (
+                  <div style={{ padding: '12px 16px', color: 'var(--fg-3)', fontSize: 13 }}>No drugs found for "{searchQ}"</div>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* Added medications */}
           <div>
+            {rx.length === 0 && (
+              <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--fg-3)' }}>
+                <Icon name="search" size={36} style={{ marginBottom: 8, opacity: 0.4 }} />
+                <div style={{ fontSize: 14 }}>Search for a drug above to add it to this prescription.</div>
+              </div>
+            )}
             {rx.map((r, i) => (
               <div key={i} style={{ padding: 20, borderBottom: i < rx.length - 1 ? '1px solid var(--border-1)' : 0 }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div className="type-h4">{r.name} {r.strength}</div>
-                      <Chip tone="neutral">{r.brand}</Chip>
-                      <Chip tone={r.interactions === 0 ? 'success' : 'warning'} icon={r.interactions === 0 ? 'check_circle' : 'warning'}>
-                        {r.interactions === 0 ? 'No interactions' : `${r.interactions} interactions`}
-                      </Chip>
+                      {r.brand && <Chip tone="neutral">{r.brand}</Chip>}
                     </div>
-                    <div className="type-caption" style={{ marginTop: 4 }}>Stock: {r.stock} packs · expires 2027-03 · FEFO ready</div>
+                    <div className="type-caption" style={{ marginTop: 4 }}>
+                      Stock: {r.stock} units · {r.form}
+                    </div>
                   </div>
-                  <button style={{ border: 0, background: 'transparent', cursor: 'pointer' }}>
+                  <button style={{ border: 0, background: 'transparent', cursor: 'pointer' }} onClick={() => removeRx(i)}>
                     <Icon name="close" size={20} style={{ color: 'var(--fg-3)' }} />
                   </button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-                  <Input label="Dose" value={r.dose} onChange={() => {}} />
-                  <Input label="Duration" value={r.dur} onChange={() => {}} />
-                  <Select label="Route" value="oral" options={[
+                  <Input label="Dose / Frequency" value={r.dose} onChange={v => updateRx(i, 'dose', v)} />
+                  <Input label="Duration (days)" value={String(r.duration_days)} onChange={v => updateRx(i, 'duration_days', v)} />
+                  <Select label="Route" value={r.route} options={[
                     { value: 'oral', label: 'Oral' }, { value: 'topical', label: 'Topical' }, { value: 'iv', label: 'IV' },
-                  ]} onChange={() => {}} />
-                  <Input label="Quantity" value={r.form === 'tab' ? '7 tab' : '1 pack'} onChange={() => {}} />
+                  ]} onChange={v => updateRx(i, 'route', v)} />
+                  <Input label="Quantity" value={`${r.duration_days} ${r.form}`} onChange={() => {}} />
                 </div>
-                <Textarea label="Instructions to patient" rows={2}
-                  value={r.name === 'Cetirizine' ? 'Take in the evening. Do not combine with alcohol.' : 'Take with food. Maximum 4 doses in 24 h.'} onChange={() => {}}
-                  style={{ marginTop: 12 }} />
+                <Textarea label="Instructions to patient" rows={2} value={r.instructions}
+                  onChange={v => updateRx(i, 'instructions', v)} style={{ marginTop: 12 }} />
               </div>
             ))}
           </div>
-          <div style={{ padding: 16, background: 'var(--bg-canvas)', borderTop: '1px solid var(--border-1)' }}>
-            <Button kind="ghost" icon="add">Add another medication</Button>
-          </div>
+          {rx.length > 0 && (
+            <div style={{ padding: 16, background: 'var(--bg-canvas)', borderTop: '1px solid var(--border-1)' }}>
+              <Button kind="ghost" icon="add" onClick={() => setSearchQ(' ')}>Add another medication</Button>
+            </div>
+          )}
         </Card>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Card>
-            <CardHeader eyebrow="Safety" title="Interaction check" />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: 'var(--success-bg)', border: '1px solid #A7F3D0' }}>
-              <Icon name="check_circle" size={20} style={{ color: 'var(--success)' }} />
-              <div className="type-body-s" style={{ color: 'var(--success-fg)' }}>No interactions with patient history or active medications.</div>
-            </div>
-            <div style={{ marginTop: 12 }}>
-              <div className="type-eyebrow" style={{ marginBottom: 8 }}>Checked against</div>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <li className="type-body-s" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Icon name="check" size={20} style={{ fontSize: 14, color: 'var(--success)' }} /> Active prescriptions (2)</li>
-                <li className="type-body-s" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Icon name="check" size={20} style={{ fontSize: 14, color: 'var(--success)' }} /> Allergy register (pollen)</li>
-                <li className="type-body-s" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Icon name="check" size={20} style={{ fontSize: 14, color: 'var(--success)' }} /> Renal &amp; hepatic flags (none)</li>
-                <li className="type-body-s" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Icon name="check" size={20} style={{ fontSize: 14, color: 'var(--success)' }} /> Pregnancy register (n/a)</li>
-              </ul>
-            </div>
+            <CardHeader eyebrow="Summary" title="Prescription" />
+            {rx.length === 0 ? (
+              <div style={{ color: 'var(--fg-3)', fontSize: 13 }}>No medications added yet.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {rx.map((r, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < rx.length - 1 ? '1px dashed var(--border-1)' : 0 }}>
+                    <span className="type-body-s">{r.name} {r.strength}</span>
+                    <span className="type-mono" style={{ fontSize: 12, color: 'var(--fg-3)' }}>{r.dose} × {r.duration_days}d</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
-
           <Card>
             <CardHeader eyebrow="Coverage" title="Pharmacy &amp; cost" />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="type-body-s">In on-site stock</span>
-                <span className="type-mono" style={{ color: 'var(--success-fg)' }}>2 / 2</span>
+                <span className="type-body-s">Medications</span>
+                <span className="type-mono">{rx.length}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span className="type-body-s">Co-pay (employee)</span>
                 <span className="type-mono">LKR 0.00</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="type-body-s">Charged to company</span>
-                <span className="type-mono">LKR 380.00</span>
-              </div>
             </div>
           </Card>
         </div>
       </div>
+
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 100 }}>
+          <Toast tone={toast.tone} title={toast.title} onClose={() => setToast(null)} />
+        </div>
+      )}
     </div>
   );
 }
