@@ -96,7 +96,13 @@ async def submit_vitals(
     patient = await Patient.find_one(Patient.user_id == user.id)
     if not patient:
         from fastapi import HTTPException, status as http_status
-        raise HTTPException(http_status.HTTP_404_NOT_FOUND, "Patient profile not found")
+        raise HTTPException(
+            http_status.HTTP_404_NOT_FOUND,
+            detail=(
+                f"No patient profile linked to user '{user.email}'. "
+                "Ask an admin to create a patient record for your account."
+            )
+        )
 
     vital = Vital(
         patient_id=patient.id,
@@ -106,6 +112,7 @@ async def submit_vitals(
         weight_kg=data.weight_kg,
         steps=data.steps,
         sleep_hours=data.sleep_hours,
+        mood=data.mood,
         source="self-report",
         recorded_at=datetime.now(timezone.utc),
     )
@@ -117,9 +124,11 @@ async def submit_vitals(
         weight_kg=vital.weight_kg,
         steps=vital.steps,
         sleep_hours=vital.sleep_hours,
+        mood=vital.mood,
         source=vital.source,
         recorded_at=vital.recorded_at,
     )
+
 
 
 # ── Appointments ──────────────────────────────────────────────────────────────

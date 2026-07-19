@@ -22,6 +22,7 @@ class VitalRead(BaseModel):
     weight_kg: Optional[float] = None
     steps: Optional[int] = None
     sleep_hours: Optional[float] = None
+    mood: Optional[int] = None
     source: str
     recorded_at: datetime
 

@@ -9,8 +9,8 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:5173"
 
     # ── Database ─────────────────────────────────────────────────
-    # MongoDB Cluster URL
-    DATABASE_URL: str = "mongodb+srv://shakilasandun_db_user:cVM8MP5Q4KU0YlAA@cluster0.t2hlvzs.mongodb.net/mras_db?appName=Cluster0"
+    # MongoDB Cluster URL — must be set in .env
+    DATABASE_URL: str = ""
 
     # ── Security ─────────────────────────────────────────────────
     SECRET_KEY: str = "dev-secret-key-change-in-production"
@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     TWILIO_ACCOUNT_SID: str = ""
     TWILIO_AUTH_TOKEN: str = ""
     SENDGRID_API_KEY: str = ""
+
+    # ── Climate APIs ──────────────────────────────────────────────
+    OPENWEATHER_API_KEY: str = ""
+    OPENWEATHER_LAT: float = 6.9271   # Default: Colombo, Sri Lanka
+    OPENWEATHER_LON: float = 79.8612
 
     # ── Feature Flags ─────────────────────────────────────────────
     ENABLE_ML_PREDICTIONS: bool = True

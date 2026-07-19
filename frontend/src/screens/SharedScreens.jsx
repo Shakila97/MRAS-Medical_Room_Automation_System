@@ -127,6 +127,14 @@ export function NotificationsCenter() {
 // ============================================================================
 export function SettingsProfile({ initialTab }) {
   const [tab, setTab] = React.useState(initialTab || 'profile');
+  const [user, setUser] = React.useState(null);
+
+  React.useEffect(() => {
+    if (tab === 'profile') {
+      api.get('/auth/me').then(res => setUser(res.data)).catch(console.error);
+    }
+  }, [tab]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <header>
@@ -169,19 +177,19 @@ export function SettingsProfile({ initialTab }) {
               <Card>
                 <CardHeader eyebrow="Profile" title="Personal details" />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 20, paddingBottom: 20, borderBottom: '1px dashed var(--border-1)' }}>
-                  <Avatar name="Priyanga Withana" size={72} color="var(--role-doctor)" />
+                  <Avatar name={user?.full_name || "Loading..."} size={72} color={user?.role === 'admin' ? 'var(--role-admin)' : 'var(--role-doctor)'} />
                   <div>
                     <Button kind="secondary" size="sm" icon="photo_camera">Change photo</Button>
                     <div className="type-caption" style={{ marginTop: 6 }}>JPG or PNG · max 2 MB · 256×256 recommended</div>
                   </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                  <Input label="First name" value="Priyanga" onChange={() => {}} />
-                  <Input label="Last name" value="Withana" onChange={() => {}} />
-                  <Input label="Title" value="Dr." onChange={() => {}} />
-                  <Input label="Display name" value="Dr. Withana" onChange={() => {}} hint="Shown across the app" />
-                  <Input label="Email" value="p.withana@corp.lk" disabled hint="Managed by your organisation" />
-                  <Input label="Phone" value="+94 77 123 4567" onChange={() => {}} />
+                  <Input label="Full name" value={user?.full_name || ""} onChange={() => {}} />
+                  <Input label="Employee ID" value={user?.employee_id || ""} onChange={() => {}} />
+                  <Input label="Title" value="N/A" onChange={() => {}} />
+                  <Input label="Display name" value={user?.full_name || ""} onChange={() => {}} hint="Shown across the app" />
+                  <Input label="Email" value={user?.email || ""} disabled hint="Managed by your organisation" />
+                  <Input label="Phone" value="" onChange={() => {}} />
                   <Select label="Department" value="medical" options={[
                     { value: 'medical', label: 'Medical' }, { value: 'pharm', label: 'Pharmacy' }, { value: 'hr', label: 'HR' },
                   ]} onChange={() => {}} />
@@ -198,15 +206,15 @@ export function SettingsProfile({ initialTab }) {
 
               <Card>
                 <CardHeader eyebrow="Role" title="Permissions" />
-                <div className="type-body-s" style={{ marginBottom: 14 }}>Your current role is <b style={{ color: 'var(--fg-1)' }}>Doctor</b>. Permission changes require an admin.</div>
+                <div className="type-body-s" style={{ marginBottom: 14 }}>Your current role is <b style={{ color: 'var(--fg-1)', textTransform: 'capitalize' }}>{user?.role || 'Loading...'}</b>. Permission changes require an admin.</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {[
-                    { p: 'View patient records', g: true },
-                    { p: 'JRISSI deep-dive (mental health score)', g: true },
-                    { p: 'Sign prescriptions', g: true },
-                    { p: 'Escalate to OH psychologist', g: true },
-                    { p: 'Manage pharmacy inventory', g: false },
-                    { p: 'Manage users &amp; roles', g: false },
+                    { p: 'View patient records', g: user?.role === 'doctor' || user?.role === 'admin' },
+                    { p: 'JRISSI deep-dive (mental health score)', g: user?.role === 'doctor' },
+                    { p: 'Sign prescriptions', g: user?.role === 'doctor' },
+                    { p: 'Escalate to OH psychologist', g: user?.role === 'doctor' },
+                    { p: 'Manage pharmacy inventory', g: user?.role === 'pharmacy' || user?.role === 'admin' },
+                    { p: 'Manage users &amp; roles', g: user?.role === 'admin' },
                   ].map((r, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 6, background: r.g ? 'var(--bg-canvas)' : 'transparent', opacity: r.g ? 1 : 0.6 }}>
                       <Icon name={r.g ? 'check_circle' : 'remove_circle'} size={20} style={{ color: r.g ? 'var(--success)' : 'var(--fg-4)' }} />

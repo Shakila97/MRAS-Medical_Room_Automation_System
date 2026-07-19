@@ -80,6 +80,7 @@ class Vital(Document):
     weight_kg: Optional[float] = None
     steps: Optional[int] = None                # daily step count
     sleep_hours: Optional[float] = None
+    mood: Optional[int] = None                 # 1-5 self-reported mood score
     source: str = Field(default="manual")      # manual | wearable | kiosk
     recorded_at: datetime = Field(default_factory=datetime.utcnow)
     
