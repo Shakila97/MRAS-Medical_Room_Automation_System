@@ -295,7 +295,7 @@ export function AppointmentScheduling() {
       // Create a datetime for the scheduled slot
       const scheduledAt = new Date(`${date}T${slot}:00`).toISOString();
       const res = await api.post('/appointments', {
-        doctor_id: 2, // Hardcoded doctor ID for now
+        doctor_id: '6a5cc6d0f5cd542744e4b924', // Hardcoded valid ObjectId for now
         scheduled_at: scheduledAt,
         duration_minutes: 15,
         notes: "Routine check-in"
