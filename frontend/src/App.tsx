@@ -11,7 +11,7 @@ import { MrasRegister } from './screens/AuthScreens.jsx';
 // ── Doctor screens
 import { DoctorDashboard } from './screens/DoctorDashboard.jsx';
 import { PatientRecord } from './screens/PatientRecord.jsx';
-import { SoapEditor, PrescriptionWriter, JrissiDeepDive, ForecastingView, JrissiAiOverview } from './screens/DoctorScreens.jsx';
+import { SoapEditor, PrescriptionWriter, JrissiDeepDive, ForecastingView, JrissiAiOverview, DoctorPatientsList } from './screens/DoctorScreens.jsx';
 
 // ── Employee screens
 import { EmployeeHome } from './screens/EmployeeHome.jsx';
@@ -76,7 +76,8 @@ export default function App() {
         {/* ── Doctor ── */}
         <Route path="/doctor" element={<Navigate to="/doctor/dashboard" replace />} />
         <Route path="/doctor/dashboard"     element={<RoleLayout role="doctor"><DoctorDashboard onOpenPatient={() => {}} /></RoleLayout>} />
-        <Route path="/doctor/patients"      element={<RoleLayout role="doctor"><PatientRecord patientId={1} onBack={() => window.history.back()} /></RoleLayout>} />
+        <Route path="/doctor/patients"      element={<RoleLayout role="doctor"><DoctorPatientsList /></RoleLayout>} />
+        <Route path="/doctor/patients/:id"  element={<RoleLayout role="doctor"><PatientRecord onBack={() => window.history.back()} /></RoleLayout>} />
         <Route path="/doctor/consultations" element={<RoleLayout role="doctor"><SoapEditor /></RoleLayout>} />
         <Route path="/doctor/prescriptions" element={<RoleLayout role="doctor"><PrescriptionWriter /></RoleLayout>} />
         <Route path="/doctor/jrissi"        element={<RoleLayout role="doctor"><JrissiDeepDive /></RoleLayout>} />

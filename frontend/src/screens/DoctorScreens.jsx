@@ -7,12 +7,74 @@ import { api } from '../api/client';
 // JRISSI deep-dive panel, Predictive forecasting view.
 
 // ============================================================================
+// 0. PATIENTS LIST (Doctor)
+// ============================================================================
+export function DoctorPatientsList() {
+  const navigate = useNavigate();
+  const [patients, setPatients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    // Note: the backend route is /patients/ for all patients
+    api.get(`/patients/?search=${encodeURIComponent(search)}`)
+      .then(res => setPatients(res.data))
+      .catch(err => console.error("Failed to load patients", err))
+      .finally(() => setLoading(false));
+  }, [search]);
+
+  const cols = [
+    { key: 'employee_id', label: 'Emp ID' },
+    { key: 'full_name', label: 'Name' },
+    { key: 'department', label: 'Department' },
+    { 
+      key: 'jrissi', 
+      label: 'JRISSI',
+      render: (_, p) => p.jrissi_score ? <Chip tone={p.jrissi_score >= 67 ? 'danger' : p.jrissi_score >= 34 ? 'warning' : 'success'}>{p.jrissi_score}</Chip> : <span style={{ color: 'var(--fg-4)' }}>N/A</span>
+    },
+    { 
+      key: 'actions', 
+      label: '', 
+      align: 'right',
+      render: (_, p) => <Button kind="secondary" size="sm" onClick={() => navigate(`/doctor/patients/${p.id}`)}>View Record</Button>
+    }
+  ];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
+        <div>
+          <div className="type-eyebrow" style={{ marginBottom: 6 }}>Directory</div>
+          <h1 className="type-h1">Patients</h1>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Input 
+            value={search} 
+            onChange={setSearch} 
+            placeholder="Search name or ID..." 
+            leading="search"
+          />
+        </div>
+      </header>
+
+      <Card padding={0}>
+        {loading ? (
+          <div style={{ padding: 40 }}><Skeleton rows={10} /></div>
+        ) : (
+          <DataTable columns={cols} rows={Array.isArray(patients) ? patients : []} />
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// ============================================================================
 // 1. SOAP CONSULTATION EDITOR
 // ============================================================================
 export function SoapEditor() {
   const navigate = useNavigate();
   const location = useLocation();
-  const patient = location.state?.patient || { id: 1, full_name: 'A. Perera', employee_id: 'E-002417', department: 'engineering', jrissi: 78 };
+  const patient = location.state?.patient || null;
   
   const [tab, setTab] = React.useState('s');
   const [s, setS] = React.useState('');
@@ -25,6 +87,7 @@ export function SoapEditor() {
   const [consultHistory, setConsultHistory] = React.useState([]);
 
   React.useEffect(() => {
+    if (!patient) return;
     // Create draft on load
     api.post('/consultations/', { patient_id: patient.id })
       .then(res => setConsultId(res.data.id))
@@ -36,7 +99,9 @@ export function SoapEditor() {
     api.get(`/consultations/patient/${patient.id}?limit=4`)
       .then(res => setConsultHistory(res.data))
       .catch(err => console.error("Failed to load consultation history", err));
-  }, [patient.id]);
+  }, [patient?.id]);
+
+  if (!patient) return <ErrorState title="No patient selected" message="Navigate from a patient record to start a consultation." />;
 
   const handleSaveDraft = async () => {
     if (!consultId) return;
@@ -191,7 +256,7 @@ export function SoapEditor() {
 export function PrescriptionWriter() {
   const navigate = useNavigate();
   const location = useLocation();
-  const patient = location.state?.patient || { id: 1, full_name: 'A. Perera' };
+  const patient = location.state?.patient || null;
   
   const [saving, setSaving] = useState(false);
   const [searchQ, setSearchQ] = useState('');
@@ -258,6 +323,8 @@ export function PrescriptionWriter() {
       setSaving(false);
     }
   };
+
+  if (!patient) return <ErrorState title="No patient selected" message="Navigate from a patient record to write a prescription." />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -650,7 +717,8 @@ export function ForecastingView() {
 // ============================================================================
 // 5. JRISSI / AI — workforce mental-health scores + AI predictions (/ai)
 // ============================================================================
-export function JrissiAiOverview({ onOpenPatient }) {
+export function JrissiAiOverview() {
+  const navigate = useNavigate();
   const [toast, setToast] = React.useState(null);
   const [stats, setStats] = React.useState({
     workforce_avg_jrissi: 34,
@@ -772,7 +840,7 @@ export function JrissiAiOverview({ onOpenPatient }) {
                     <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
                       <Button kind="ghost" size="sm">Dismiss</Button>
                       <Button kind="secondary" size="sm" icon={p.pid ? 'open_in_new' : 'check'}
-                        onClick={() => p.pid && onOpenPatient && onOpenPatient(p.pid)}>
+                        onClick={() => p.pid && navigate(`/doctor/patients/${p.pid}`)}>
                         {p.pid ? 'Open record' : 'Apply'}
                       </Button>
                     </div>

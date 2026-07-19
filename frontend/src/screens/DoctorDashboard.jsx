@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
 import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
+import { useNavigate } from 'react-router-dom';
 
 // Live date string
 const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -18,7 +19,13 @@ export function DoctorDashboard({ onOpenPatient }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const navigate = useNavigate();
   const doctorName = user?.full_name || 'Doctor';
+
+  // Helper to open a patient record. Uses ID from string or object if available
+  const handleOpenPatient = (idOrStr) => {
+    navigate(`/doctor/patients/${idOrStr}`);
+  };
 
   useEffect(() => {
     api.get('/dashboard/doctor')
@@ -51,7 +58,7 @@ export function DoctorDashboard({ onOpenPatient }) {
       </header>
 
       <Banner tone="danger" title="JRISSI sustained High for 14 days.">
-        A. Perera (E-002417) requires escalation. <a href="#" onClick={(e) => { e.preventDefault(); onOpenPatient('E-002417'); }} style={{ color: 'var(--danger-fg)', textDecoration: 'underline' }}>Open record</a>.
+        A. Perera (E-002417) requires escalation. <a href="#" onClick={(e) => { e.preventDefault(); handleOpenPatient('6a5cc6d0f5cd542744e4b924'); }} style={{ color: 'var(--danger-fg)', textDecoration: 'underline' }}>Open record</a>.
       </Banner>
 
       {/* Top stat strip */}
@@ -82,7 +89,7 @@ export function DoctorDashboard({ onOpenPatient }) {
             {patients.map((p, i) => {
               const tone = p.jrissi < 34 ? 'low' : p.jrissi < 67 ? 'moderate' : 'high';
               return (
-                <div key={p.id} onClick={() => onOpenPatient(p.id)} style={{
+                <div key={p.id} onClick={() => handleOpenPatient(p.id)} style={{
                   display: 'grid', gridTemplateColumns: '36px 1.5fr 1fr 110px 1fr 32px',
                   alignItems: 'center', gap: 12,
                   padding: '12px 20px',
