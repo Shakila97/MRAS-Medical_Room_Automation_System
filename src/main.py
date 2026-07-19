@@ -75,7 +75,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_router, prefix="/api")
     app.include_router(notifications_router, prefix="/api")
     app.include_router(wellness_router, prefix="/api")
-    app.include_router(dashboard_router, prefix="/api/dashboard")
+    app.include_router(dashboard_router, prefix="/api")
 
     # ── Health Check ──────────────────────────────────────────────────────────
     @app.get("/health", tags=["System"], summary="Health check")

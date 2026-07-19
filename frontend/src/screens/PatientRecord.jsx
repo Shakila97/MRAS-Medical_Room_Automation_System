@@ -3,10 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { Icon, Button, Card, CardHeader, Chip, Banner, Avatar, StatTile, SectionTitle, JrissiGauge, Sparkline } from '../widgets.jsx';
 import { Input, Select, Textarea, Toggle, Checkbox, Tabs, Modal, Drawer, Toast, EmptyState, Skeleton, LoadingRows, ErrorState, DataTable, Stepper, FileUpload, DateField, MiniCalendar, LineChart, BarChart, Donut, Progress, CommandPalette, GlobalAnims } from '../primitives.jsx';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
-export function PatientRecord({ patientId, onBack }) {
+export function PatientRecord({ patientId: propPatientId, onBack }) {
   const navigate = useNavigate();
+  const { id: paramPatientId } = useParams();
+  const patientId = propPatientId || paramPatientId;
+
   const [p, setP] = useState(null);
   const [consultations, setConsultations] = useState([]);
   const [jrissi, setJrissi] = useState(null);
